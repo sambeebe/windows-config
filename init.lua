@@ -2,6 +2,8 @@
 vim.opt.termguicolors = true
 vim.g.moonflyTerminalColors = true
 
+-- LEADER
+vim.g.mapleader = " "
 
 -- Initialize vim-plug
 vim.cmd([[
@@ -192,17 +194,17 @@ vim.keymap.set('n', 'X', 'D', { noremap = true })
 -- STATUS LINE
 require('lualine').setup {
   options = {
-    icons_enabled = true,
+    icons_enabled = false,
     theme = 'auto',
-    component_separators = { left = '', right = ''},
-    section_separators = { left = '', right = ''},
+    component_separators = { left = '|', right = '|'},
+    section_separators = { left = '', right = ''},
     disabled_filetypes = {
       statusline = {},
       winbar = {},
     },
     ignore_focus = {},
     always_divide_middle = true,
-    always_show_tabline = true,
+    always_show_tabline = false,  -- Set to false to hide the tabline
     globalstatus = false,
     refresh = {
       statusline = 100,
@@ -240,7 +242,6 @@ require('lualine').setup {
 -- Disable netvim.g.loaded_netrw = 1
 vim.g.loaded_netrwPlugin = 1
 
-vim.g.mapleader = " "
 
 -- Don't show the mode, since it's already in the status line
 --vim.opt.showmode = false
@@ -374,3 +375,5 @@ vim.keymap.set('v', '<A-j>', ":m '>+1<CR>gv=gv", { desc = 'Move selection down',
 vim.keymap.set('i', '<A-j>', '<Esc>:m .+1<CR>==gi', { desc = 'Move line down', noremap = true })
 vim.keymap.set('n', '<A-k>', ':m .-2<CR>==', { desc = 'Move line up', noremap = true })
 vim.keymap.set('n', '<A-j>', ':m .+1<CR>==', { desc = 'Move line down', noremap = true })
+
+vim.o.showmode = false
