@@ -19,15 +19,59 @@ vim.cmd([[
      Plug 'https://github.com/chentoast/marks.nvim'
      Plug 'https://github.com/bluz71/vim-moonfly-colors'
      Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
-     Plug 'nvim-treesitter/playground' 
+     Plug 'nvim-treesitter/nvim-treesitter-textobjects'
+     Plug 'nvim-treesitter/playground'  
      Plug 'https://github.com/nvim-lualine/lualine.nvim'
      call plug#end()
      colorscheme moonfly
      ]]
      )
+------------ VIM SETINGS ---------
+vim.g.loaded_netrwPlugin = 0
+vim.cmd('syntax enable')
+
+vim.cmd('filetype plugin indent on') -- Enable filetype detection, plugin, and indent
 
 
-----------CUSTOM COMMANDS--------
+vim.api.nvim_create_augroup("YankHighlight", { clear = true })
+vim.api.nvim_create_autocmd("TextYankPost", {
+  group = "YankHighlight",
+  callback = function()
+      vim.highlight.on_yank {
+          higroup = "IncSearch",  -- highlight group (Visual, Search, IncSearch, etc)
+          timeout = 149,          -- duration in ms
+          on_visual = false,      -- don't trigger when pasting in visual mode
+      }
+  end,
+})
+
+
+vim.schedule(function()
+  vim.opt.clipboard = 'unnamedplus'
+end)
+vim.opt.undofile = true -- Save undo history
+
+-- Set tab width and indentation
+vim.opt.tabstop = 4        -- Number of spaces a tab counts for
+vim.opt.shiftwidth = 4     -- Number of spaces for each step of autoindent
+vim.opt.expandtab = true   -- Convert tabs to spaces
+vim.opt.smartindent = true -- Auto-indent new lines
+vim.opt.autoindent = true  -- Copy indent from current line when starting a new line
+vim.opt.softtabstop = 3    -- Number of spaces a tab counts for when editing
+vim.opt.smarttab = true    -- Insert spaces or tabs to go to the next indent
+vim.opt.breakindent = true -- Wrapped lines will maintain their indentatio
+
+
+vim.o.ignorecase = true  -- Makes searches case insensitive by default
+vim.o.smartcase = true   -- Case-sensitive if search contains uppercase letters
+
+
+
+----------CUSTOM COMMANDS-------
+--
+----
+vim.api.nvim_set_keymap('n', '<C-l>', ':noh<CR>', { noremap = true, silent = true })
+
 -- Create custom command to copy file path
 vim.api.nvim_create_user_command('C', function()
      local full_path = vim.fn.expand('%:p')
@@ -36,12 +80,16 @@ vim.api.nvim_create_user_command('C', function()
 end, {})
 
 -- Create custom command to execute PowerShell's "e" command
-vim.api.nvim_create_user_command('E', function()
+vim.api.nvim_create_user_command('F', function()
     -- Execute PowerShell with the 'e' command
     vim.fn.system('powershell.exe -Command "e"')
     -- Print a confirmation message
     print("PowerShell command 'e' executed")
 end, {})
+
+
+-- Define a custom command to reload the Neovim configuration
+vim.api.nvim_create_user_command('RC', 'source C:/Users/samue/AppData/Local/nvim/init.lua', { nargs = 0 })
 
 
 vim.opt.relativenumber = true
@@ -50,7 +98,6 @@ vim.api.nvim_create_user_command('T', function()
     -- Check current state of number and relativenumber
     local has_number = vim.opt.number:get()
     local has_relative = vim.opt.relativenumber:get()
-    
     if has_relative then
         -- If currently using relative numbers, switch to absolute
         vim.opt.relativenumber = false
@@ -64,8 +111,8 @@ vim.api.nvim_create_user_command('T', function()
     end
 end, {})
 
+
 ----------BUTTON REMAPS----------
----
 -- Switch : and ; (swap their functionality)
 vim.keymap.set('n', ';', ':', { noremap = true })
 vim.keymap.set('n', ':', ';', { noremap = true })
@@ -81,37 +128,34 @@ vim.keymap.set('n', 'cl', 's', { desc = "Substitute character (remapped from 's'
 ----------MINI CONFIGS-----------
 -- Set up mini.ai
 require('mini.ai').setup({
-  n_lines = 500,  -- Number of lines to look for text objects
+  n_lines = 500,
+
   custom_textobjects = {
-    -- Optional custom text objects
-    f = function() -- function calls/definitions
-      return require('mini.ai').gen_spec.treesitter({
-        a = '@function.outer',
-        i = '@function.inner',
-      })
-    end,
-    c = function() -- class definitions
-      return require('mini.ai').gen_spec.treesitter({
-        a = '@class.outer',
-        i = '@class.inner',
-      })
-    end,
+    -- your existing ones
+    f = require('mini.ai').gen_spec.treesitter({ a = '@function.outer',    i = '@function.inner'    }),
+    c = require('mini.ai').gen_spec.treesitter({ a = '@class.outer',       i = '@class.inner'       }),
+
+    -- now add loops under 'u' (for “looP”)
+    u = require('mini.ai').gen_spec.treesitter({ a = '@loop.outer',        i = '@loop.inner'        }),
+    -- and blocks under 'b'
+    b = require('mini.ai').gen_spec.treesitter({ a = '@block.outer',       i = '@block.inner'       }),
+    -- and conditionals under 'o' (think “if/Else”)
+    o = require('mini.ai').gen_spec.treesitter({ a = '@conditional.outer', i = '@conditional.inner' }),
   },
-  -- These are the default mappings
+
   mappings = {
-    -- Main textobject prefixes
-    around = 'a',
-    inside = 'i',
-    -- Next/last textobjects
-    around_next = 'an',
-    inside_next = 'in',
-    around_last = 'al',
-    inside_last = 'il',
-    -- Move cursor to corresponding edge of `a` textobject
-    goto_left = 'g[',
-    goto_right = 'g]',
+    around       = 'a',
+    inside       = 'i',
+    around_next  = 'an',
+    inside_next  = 'in',
+    around_last  = 'al',
+    inside_last  = 'il',
+    goto_left    = 'g[',
+    goto_right   = 'g]',
   },
 })
+
+
 -- Set up mini.surround with simplified keys
 require('mini.surround').setup({
      -- Use shorter keys
@@ -130,17 +174,22 @@ require('mini.surround').setup({
 
 -- TREESITTER 
 require'nvim-treesitter.configs'.setup {
-  ensure_installed = { "python" },
+  ensure_installed = { "python", "powershell", "cpp" },
   highlight = {
     enable = true,
-  },
+  }
 }
+
+
+
 
 -- Telescope mappings
 vim.keymap.set('n', '<leader>ff', '<cmd>Telescope find_files<CR>')
 vim.keymap.set('n', '<leader><leader>', '<cmd>Telescope find_files<CR>')
 vim.keymap.set('n', '<leader>fg', '<cmd>Telescope live_grep<CR>')
 vim.keymap.set('n', '<leader>fb', '<cmd>Telescope buffers<CR>')
+vim.api.nvim_set_keymap('n', '<Leader>h', ':bprevious<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<Leader>l', ':bnext<CR>', { noremap = true, silent = true })
 
 
 -- Marks
@@ -182,13 +231,15 @@ require('marks').setup {
           prev = "<",     -- Go to previous mark with (
           }
      }
-
-
 -- CUTLASS
-vim.keymap.set('n', 'x', 'd', { noremap = true })
-vim.keymap.set('x', 'x', 'd', { noremap = true })
-vim.keymap.set('n', 'xx', 'dd', { noremap = true })
-vim.keymap.set('n', 'X', 'D', { noremap = true })
+-- Revert 'x' to its default behavior (delete character)
+-- vim.keymap.set('n', 'x', 'x', { noremap = true })  -- Normal mode: 'x' deletes character
+--
+-- -- Keep your customizations for other commands
+-- vim.keymap.set('x', 'x', 'd', { noremap = true })  -- Visual mode: 'x' deletes selection
+-- vim.keymap.set('n', 'xx', 'dd', { noremap = true })  -- Normal mode: 'xx' deletes current line
+-- vim.keymap.set('n', 'X', 'D', { noremap = true })  -- Normal mode: 'X' deletes to end of line
+
 
 
 -- STATUS LINE
@@ -238,48 +289,6 @@ require('lualine').setup {
 
 
 
------------- VIM SETINGS ---------
--- Disable netvim.g.loaded_netrw = 1
-vim.g.loaded_netrwPlugin = 1
-
-
--- Don't show the mode, since it's already in the status line
---vim.opt.showmode = false
-
--- Enable syntax highlighting
-vim.cmd('syntax enable')
-
--- Enable filetype detection, plugin, and indent
-vim.cmd('filetype plugin indent on')
-
--- Set colorscheme (choose one of the built-in options)
--- vim.opt.background = 'dark' 
--- vim.cmd('colorscheme desert') 
-
-
-vim.schedule(function()
-  vim.opt.clipboard = 'unnamedplus'
-end)
--- Save undo history
-vim.opt.undofile = true
-
--- vim.g.VM_maps = {
---   ['Find Under'] = '<C-g>',         -- instead of <C-n>
---   ['Find Subword Under'] = '<C-g>', -- instead of <C-n>
---   -- other mappings as needed
--- }
-
--- Set tab width and indentation
-vim.opt.tabstop = 5        -- Number of spaces a tab counts for
-vim.opt.shiftwidth = 5     -- Number of spaces for each step of autoindent
-vim.opt.expandtab = true   -- Convert tabs to spaces
-vim.opt.smartindent = true -- Auto-indent new lines
-vim.opt.autoindent = true  -- Copy indent from current line when starting a new line
-    
--- Optional enhancements
-vim.opt.softtabstop = 4    -- Number of spaces a tab counts for when editing
-vim.opt.smarttab = true    -- Insert spaces or tabs to go to the next indent
-vim.opt.breakindent = true -- Wrapped lines will maintain their indentation
 
 
 
@@ -288,13 +297,10 @@ vim.opt.breakindent = true -- Wrapped lines will maintain their indentation
 
 
 
--- In normal mode: delete charactxer before cursor and enter insert mode
--- In visual mode: delete selection
--- In visual block mode: delete selection
+-- backspace
 vim.keymap.set('n', '<BS>', 'Xi', { noremap = true })
-vim.keymap.set('v', '<BS>', 'd', { noremap = true })
-vim.keymap.set('x', '<BS>', 'd', { noremap = true })
-
+vim.keymap.set('v', '<BS>', '"_d', { noremap = true })
+vim.keymap.set('x', '<BS>', '"_d', { noremap = true })
 
 
 -- undo in insert mode
@@ -312,54 +318,46 @@ vim.keymap.set('n', '<C-d>', 'yyp', { noremap = true, desc = 'Duplicate line' })
 vim.keymap.set('v', '<C-d>', 'y`>p', { noremap = true, desc = 'Duplicate selection' })
 vim.keymap.set('i', '<C-d>', '<Esc>yypi', { noremap = true, desc = 'Duplicate line' })
 
+
 -- Map Ctrl+S to exit insert mode and save
 vim.keymap.set('i', '<C-s>', '<Esc>:w<CR>', { noremap = true, silent = true, desc = 'Exit insert mode and save' })
 vim.keymap.set('n', '<C-s>', ':w<CR>', { noremap = true, silent = true, desc = 'Save in normal mode' })
 
---
 
---
--- Tab to indent in normal mode
--- Tab to indent in visual mode and stay in visual mode
--- Tab to indent in insert mode (already the default behavior in most cases)
-vim.keymap.set('n', '<Tab>', '>>', { noremap = true })
-vim.keymap.set('n', '<S-Tab>', '<<', { noremap = true })
-vim.keymap.set('v', '<Tab>', '>gv', { noremap = true })
-vim.keymap.set('v', '<S-Tab>', '<gv', { noremap = true })
---
--- vim.keymap.set('i', '<Tab>', function()
-     --   if vim.fn.pumvisible() ~= 0 then
-     --     return "<C-n>"
-     --   else
-     --     return "<Tab>"
-     --   end
-     -- end, { expr = true, noremap = true })
---
--- Shift+Tab to unindent in insert mode
+
+
+-- TAB
+-- Clear any prior Tab mappings to avoid conflicts
+-- Ensure Tab works for indentation even on non-blank lines
+-- Shift + Tab to un-indent
+-- Indentation in visual mode and keep visual mode active
+
+vim.keymap.set('n', '<Tab>', '<Nop>', { noremap = true, silent = true })
+vim.keymap.set('n', '<Tab>', "col('.') == 1 ? 'i<Tab>' : '>>_'", { noremap = true, silent = true, expr = true })
+vim.keymap.set('n', '<S-Tab>', '<<', { noremap = true, silent = true })
+vim.keymap.set('v', '<Tab>', '>gv', { noremap = true, silent = true })
+vim.keymap.set('v', '<S-Tab>', '<gv', { noremap = true, silent = true })
+vim.keymap.set('i', '<S-Tab>', '<C-d>', { noremap = true })
+    
 -- Increment with <leader>a
 -- Decrement with <leader>x (since d is commonly used for delete)
-vim.keymap.set('i', '<S-Tab>', '<C-d>', { noremap = true })
-vim.keymap.set('n', '<leader>a', '<C-a>', { noremap = true, desc = 'Increment number' })
-vim.keymap.set('n', '<leader>x', '<C-x>', { noremap = true, desc = 'Decrement number' })
+-- vim.keymap.set('n', '<leader>a', '<C-a>', { noremap = true, desc = 'Increment number' })
+-- vim.keymap.set('n', '<leader>x', '<C-x>', { noremap = true, desc = 'Decrement number' })
+
+-- enter 
+vim.keymap.set('n', '<CR>', 'i<CR><Esc>', { noremap = true })
+-- vim.keymap.set('n', '<leader><CR>', 'i<CR>', { noremap = true })
 
 
-vim.keymap.set('n', '<CR>', 'o<Esc>', { noremap = true })
--- For Shift+Enter, most terminals send different key codes
--- We can try to map it, but it may not work in all terminals
-vim.keymap.set('n', '<S-CR>', 'o', { noremap = true, silent = true })
--- Alternative mapping for terminals that don't support Shift+Enter
-vim.keymap.set('n', '<leader><CR>', 'o', { noremap = true, desc = "New line and enter insert mode" })
 
 -- In visual mode: create line breaks at selection boundaries
-vim.keymap.set('v', '<CR>', 'd<CR><Esc>P', { noremap = true })
-
 -- In visual block mode: maintain the block selection after pressing Enter
+vim.keymap.set('v', '<CR>', 'd<CR><Esc>P', { noremap = true })
 vim.keymap.set('x', '<CR>', '<C-v><CR>', { noremap = true })
+
 
 --ctrl + A to select all 
 vim.keymap.set('n', '<C-a>', 'ggVG', { noremap = true })
-
-
 
 
 -- Fix Alt+Up/Down mappings
