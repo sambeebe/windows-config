@@ -22,11 +22,13 @@ vim.cmd([[
      Plug 'nvim-treesitter/nvim-treesitter-textobjects'
      Plug 'nvim-treesitter/playground'  
      Plug 'https://github.com/nvim-lualine/lualine.nvim'
+     Plug 'https://github.com/karb94/neoscroll.nvim'
      call plug#end()
      colorscheme moonfly
      ]]
      )
------------- VIM SETINGS ---------
+
+     ------------ VIM SETINGS ---------
 vim.g.loaded_netrwPlugin = 0
 vim.cmd('syntax enable')
 
@@ -122,8 +124,27 @@ vim.keymap.set('n', 's', '<Nop>', { noremap = true })
 -- Remap the built-in 's' command to 'cl' which does the same thing
 vim.keymap.set('n', 'cl', 's', { desc = "Substitute character (remapped from 's')" })
 
-
-
+------------------- PLUGIN SETTINGS --------------------
+require('neoscroll').setup({
+  mappings = {                 -- Keys to be mapped to their corresponding default scrolling animation
+    '<C-u>', '<C-d>',
+    '<C-b>', '<C-f>',
+    '<C-y>', '<C-e>',
+    'zt', 'zz', 'zb',
+  },
+  hide_cursor = true,          -- Hide cursor while scrolling
+  stop_eof = true,             -- Stop at <EOF> when scrolling downwards
+  respect_scrolloff = false,   -- Stop scrolling when the cursor reaches the scrolloff margin of the file
+  cursor_scrolls_alone = true, -- The cursor will keep on scrolling even if the window cannot scroll further
+  duration_multiplier = 1.0,   -- Global duration multiplier
+  easing = 'linear',           -- Default easing function
+  pre_hook = nil,              -- Function to run before the scrolling animation starts
+  post_hook = nil,             -- Function to run after the scrolling animation ends
+  performance_mode = false,    -- Disable "Performance Mode" on all buffers.
+  ignored_events = {           -- Events ignored while scrolling
+      'WinScrolled', 'CursorMoved'
+  },
+})
 
 ----------MINI CONFIGS-----------
 -- Set up mini.ai
@@ -190,6 +211,19 @@ vim.keymap.set('n', '<leader>fg', '<cmd>Telescope live_grep<CR>')
 vim.keymap.set('n', '<leader>fb', '<cmd>Telescope buffers<CR>')
 vim.api.nvim_set_keymap('n', '<Leader>h', ':bprevious<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<Leader>l', ':bnext<CR>', { noremap = true, silent = true })
+-- Auto open Telescope when Neovim is started in a directory
+-- Auto open Telescope when Neovim is started in a directory, but not when opening a file
+vim.api.nvim_create_autocmd("VimEnter", {
+    pattern = "*",
+    callback = function()
+        -- Check if Neovim was opened without a file argument
+        if vim.fn.argc() == 0 and vim.fn.isdirectory(vim.fn.getcwd()) == 1 then
+            -- Open Telescope's find_files when no file is specified and we're in a directory
+            vim.cmd("Telescope find_files")
+        end
+    end
+})
+
 
 
 -- Marks
@@ -314,9 +348,9 @@ vim.keymap.set('n', '<C-z>', 'u', { noremap = true, desc = 'Undo in normal mode'
 -- Normal mode: duplicate current line
 -- Visual mode: duplicate selected lines
 -- Insert mode: duplicate current line and stay in insert mode
-vim.keymap.set('n', '<C-d>', 'yyp', { noremap = true, desc = 'Duplicate line' })
-vim.keymap.set('v', '<C-d>', 'y`>p', { noremap = true, desc = 'Duplicate selection' })
-vim.keymap.set('i', '<C-d>', '<Esc>yypi', { noremap = true, desc = 'Duplicate line' })
+vim.keymap.set('n', '<C-g>', 'yyp', { noremap = true, desc = 'Duplicate line' })
+vim.keymap.set('v', '<C-g>', 'y`>p', { noremap = true, desc = 'Duplicate selection' })
+vim.keymap.set('i', '<C-g>', '<Esc>yypi', { noremap = true, desc = 'Duplicate line' })
 
 
 -- Map Ctrl+S to exit insert mode and save
@@ -325,7 +359,7 @@ vim.keymap.set('n', '<C-s>', ':w<CR>', { noremap = true, silent = true, desc = '
 
 
 
-
+    
 -- TAB
 -- Clear any prior Tab mappings to avoid conflicts
 -- Ensure Tab works for indentation even on non-blank lines
@@ -341,13 +375,13 @@ vim.keymap.set('i', '<S-Tab>', '<C-d>', { noremap = true })
     
 -- Increment with <leader>a
 -- Decrement with <leader>x (since d is commonly used for delete)
--- vim.keymap.set('n', '<leader>a', '<C-a>', { noremap = true, desc = 'Increment number' })
+-- vim.keymap.set(n', '<leader>a', '<C-a>', { noremap = true, desc = 'Increment number' })
 -- vim.keymap.set('n', '<leader>x', '<C-x>', { noremap = true, desc = 'Decrement number' })
 
 -- enter 
 vim.keymap.set('n', '<CR>', 'i<CR><Esc>', { noremap = true })
 -- vim.keymap.set('n', '<leader><CR>', 'i<CR>', { noremap = true })
-
+        
 
 
 -- In visual mode: create line breaks at selection boundaries
