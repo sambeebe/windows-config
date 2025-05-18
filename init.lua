@@ -26,6 +26,7 @@ vim.cmd([[
      Plug 'https://github.com/karb94/neoscroll.nvim'
      Plug 'https://github.com/neanias/everforest-nvim'
      Plug 'https://github.com/ellisonleao/gruvbox.nvim'
+     Plug 'https://github.com/junegunn/vim-easy-align'
      call plug#end()
      "colorscheme moonfly
      "colorscheme everforest 
@@ -129,7 +130,12 @@ vim.keymap.set('n', 's', '<Nop>', { noremap = true })
 -- Remap the built-in 's' command to 'cl' which does the same thing
 vim.keymap.set('n', 'cl', 's', { desc = "Substitute character (remapped from 's')" })
 
+
 ------------------- PLUGIN SETTINGS --------------------
+-- Map ga to EasyAlign command
+vim.api.nvim_set_keymap('x', 'ga', '<Plug>(EasyAlign)', { noremap = false, silent = true })
+vim.api.nvim_set_keymap('n', 'ga', '<Plug>(EasyAlign)', { noremap = false, silent = true })
+
 require('neoscroll').setup({
   mappings = {                 -- Keys to be mapped to their corresponding default scrolling animation
     '<C-u>', '<C-d>',
