@@ -1,7 +1,8 @@
 -- COLORS
 vim.opt.termguicolors = true
-vim.g.moonflyTerminalColors = true
-
+-- vim.g.moonflyTerminalColors = true
+-- vim.cmd([[colorscheme everforest]])
+-- vim.cmd('colorscheme everforest')
 -- LEADER
 vim.g.mapleader = " "
 
@@ -23,8 +24,12 @@ vim.cmd([[
      Plug 'nvim-treesitter/playground'  
      Plug 'https://github.com/nvim-lualine/lualine.nvim'
      Plug 'https://github.com/karb94/neoscroll.nvim'
+     Plug 'https://github.com/neanias/everforest-nvim'
+     Plug 'https://github.com/ellisonleao/gruvbox.nvim'
      call plug#end()
-     colorscheme moonfly
+     "colorscheme moonfly
+     "colorscheme everforest 
+     colorscheme gruvbox
      ]]
      )
 
@@ -148,6 +153,7 @@ require('neoscroll').setup({
 
 ----------MINI CONFIGS-----------
 -- Set up mini.ai
+
 require('mini.ai').setup({
   n_lines = 500,
 
@@ -180,22 +186,25 @@ require('mini.ai').setup({
 -- Set up mini.surround with simplified keys
 require('mini.surround').setup({
      -- Use shorter keys
-     mappings = {
-          add = 's',          -- Just 's' to start surrounding
-          replace = 'cs',     -- Change surround (like vim-surround)
-          delete = 'ds',      -- Delete surround (like vim-surround)
-          -- Disable or simplify less commonly used operations
-          find = '',          -- Disable find
-          find_left = '',     -- Disable find left
-          highlight = '',     -- Disable highlight
-          update_n_lines = '', -- Disable update n_lines
-     },
+ -- Module mappings. Use `''` (empty string) to disable one.
+  mappings = {
+    add = 's', -- Add surrounding in Normal and Visual modes
+    delete = 'sd', -- Delete surrounding
+    find = 'sf', -- Find surrounding (to the right)
+    find_left = 'sF', -- Find surrounding (to the left)
+    highlight = 'sh', -- Highlight surrounding
+    replace = 'sr', -- Replace surrounding
+    update_n_lines = 'sn', -- Update `n_lines`
+
+    suffix_last = 'l', -- Suffix to search with "prev" method
+    suffix_next = 'n', -- Suffix to search with "next" method
+  }
 })
 
 
 -- TREESITTER 
 require'nvim-treesitter.configs'.setup {
-  ensure_installed = { "python", "powershell", "cpp" },
+  ensure_installed = { "lua", "python", "powershell", "cpp" },
   highlight = {
     enable = true,
   }
@@ -211,6 +220,7 @@ vim.keymap.set('n', '<leader>fg', '<cmd>Telescope live_grep<CR>')
 vim.keymap.set('n', '<leader>fb', '<cmd>Telescope buffers<CR>')
 vim.api.nvim_set_keymap('n', '<Leader>h', ':bprevious<CR>', { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<Leader>l', ':bnext<CR>', { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<Leader>j', '<C-^>', { noremap = true, silent = true })
 -- Auto open Telescope when Neovim is started in a directory
 -- Auto open Telescope when Neovim is started in a directory, but not when opening a file
 vim.api.nvim_create_autocmd("VimEnter", {
@@ -234,25 +244,12 @@ require'marks'.setup {
      cyclic = true,
      force_write_shada = false,
      refresh_interval = 250,
-     -- sign priorities for each type of mark - builtin marks, uppercase marks, lowercase
-     -- marks, and bookmarks.
-     -- can be either a table with all/none of the keys, or a single number, in which case
-     -- the priority applies to all marks.
-     -- default 10.
      sign_priority = { lower=10, upper=15, builtin=8, bookmark=20 },
-     -- disables mark tracking for specific filetypes. default {}
      excluded_filetypes = {},
-     -- disables mark tracking for specific buftypes. default {}
      excluded_buftypes = {},
-     -- marks.nvim allows you to configure up to 10 bookmark groups, each with its own
-     -- sign/virttext. Bookmarks can be used to group together positions and quickly move
-     -- across multiple buffers. default sign is '!@#$%^&*()' (from 0 to 9), and
-     -- default virt_text is "".
      bookmark_0 = {
           sign = "⚑",
           virt_text = "hello world",
-          -- explicitly prompt for a virtual line annotation when setting a bookmark from this group.
-          -- defaults to false.
           annotate = false,
      },
      mappings = {}
