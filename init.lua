@@ -27,6 +27,7 @@ vim.cmd([[
      Plug 'https://github.com/neanias/everforest-nvim'
      Plug 'https://github.com/ellisonleao/gruvbox.nvim'
      Plug 'https://github.com/junegunn/vim-easy-align'
+     Plug 'https://github.com/RRethy/vim-illuminate'
      call plug#end()
      "colorscheme moonfly
      "colorscheme everforest 
@@ -60,18 +61,18 @@ end)
 vim.opt.undofile = true -- Save undo history
 
 -- Set tab width and indentation
-vim.opt.tabstop = 4        -- Number of spaces a tab counts for
-vim.opt.shiftwidth = 4     -- Number of spaces for each step of autoindent
-vim.opt.expandtab = true   -- Convert tabs to spaces
+vim.opt.tabstop     = 4        -- Number of spaces a tab counts for
+vim.opt.shiftwidth  = 4     -- Number of spaces for each step of autoindent
+vim.opt.expandtab   = true   -- Convert tabs to spaces
 vim.opt.smartindent = true -- Auto-indent new lines
-vim.opt.autoindent = true  -- Copy indent from current line when starting a new line
+vim.opt.autoindent  = true  -- Copy indent from current line when starting a new line
 vim.opt.softtabstop = 3    -- Number of spaces a tab counts for when editing
-vim.opt.smarttab = true    -- Insert spaces or tabs to go to the next indent
+vim.opt.smarttab    = true    -- Insert spaces or tabs to go to the next indent
 vim.opt.breakindent = true -- Wrapped lines will maintain their indentatio
 
 
 vim.o.ignorecase = true  -- Makes searches case insensitive by default
-vim.o.smartcase = true   -- Case-sensitive if search contains uppercase letters
+-- vim.o.smartcase = true   -- Case-sensitive if search contains uppercase letters
 
 
 
@@ -137,56 +138,101 @@ vim.api.nvim_set_keymap('x', 'ga', '<Plug>(EasyAlign)', { noremap = false, silen
 vim.api.nvim_set_keymap('n', 'ga', '<Plug>(EasyAlign)', { noremap = false, silent = true })
 
 require('neoscroll').setup({
-  mappings = {                 -- Keys to be mapped to their corresponding default scrolling animation
+  mappings             = {                 -- Keys to be mapped to their corresponding default scrolling animation
     '<C-u>', '<C-d>',
     '<C-b>', '<C-f>',
     '<C-y>', '<C-e>',
     'zt', 'zz', 'zb',
   },
-  hide_cursor = true,          -- Hide cursor while scrolling
-  stop_eof = true,             -- Stop at <EOF> when scrolling downwards
-  respect_scrolloff = false,   -- Stop scrolling when the cursor reaches the scrolloff margin of the file
+  hide_cursor          = true,          -- Hide cursor while scrolling
+  stop_eof             = true,             -- Stop at <EOF> when scrolling downwards
+  respect_scrolloff    = false,   -- Stop scrolling when the cursor reaches the scrolloff margin of the file
   cursor_scrolls_alone = true, -- The cursor will keep on scrolling even if the window cannot scroll further
-  duration_multiplier = 1.0,   -- Global duration multiplier
-  easing = 'linear',           -- Default easing function
-  pre_hook = nil,              -- Function to run before the scrolling animation starts
-  post_hook = nil,             -- Function to run after the scrolling animation ends
-  performance_mode = false,    -- Disable "Performance Mode" on all buffers.
-  ignored_events = {           -- Events ignored while scrolling
+  duration_multiplier  = 0.2,   -- Global duration multiplier
+  easing               = 'linear',           -- Default easing function
+  pre_hook             = nil,              -- Function to run before the scrolling animation starts
+  post_hook            = nil,             -- Function to run after the scrolling animation ends
+  performance_mode     = false,    -- Disable "Performance Mode" on all buffers.
+  ignored_events       = {           -- Events ignored while scrolling
       'WinScrolled', 'CursorMoved'
   },
 })
 
+require'nvim-treesitter.configs'.setup {
+  textobjects = {
+    select = {
+      enable = true,
+
+      -- Automatically jump forward to textobj, similar to targets.vim
+      lookahead = true,
+
+      keymaps = {
+        -- You can use the capture groups defined in textobjects.scm
+        ["af"] = "@function.outer",
+        ["if"] = "@function.inner",
+        ["ac"] = "@class.outer",
+        -- You can optionally set descriptions to the mappings (used in the desc parameter of
+        -- nvim_buf_set_keymap) which plugins like which-key display
+        ["ic"] = { query = "@class.inner", desc = "Select inner part of a class region" },
+        -- You can also use captures from other query groups like `locals.scm`
+        ["as"] = { query = "@local.scope", query_group = "locals", desc = "Select language scope" },
+      },
+      -- You can choose the select mode (default is charwise 'v')
+      --
+      -- Can also be a function which gets passed a table with the keys
+      -- * query_string: eg '@function.inner'
+      -- * method: eg 'v' or 'o'
+      -- and should return the mode ('v', 'V', or '<c-v>') or a table
+      -- mapping query_strings to modes.
+      selection_modes = {
+        ['@parameter.outer'] = 'v', -- charwise
+        ['@function.outer'] = 'V', -- linewise
+        ['@class.outer'] = '<c-v>', -- blockwise
+      },
+      -- If you set this to `true` (default is `false`) then any textobject is
+      -- extended to include preceding or succeeding whitespace. Succeeding
+      -- whitespace has priority in order to act similarly to eg the built-in
+      -- `ap`.
+      --
+      -- Can also be a function which gets passed a table with the keys
+      -- * query_string: eg '@function.inner'
+      -- * selection_mode: eg 'v'
+      -- and should return true or false
+      include_surrounding_whitespace = true,
+    },
+  },
+}
+
 ----------MINI CONFIGS-----------
 -- Set up mini.ai
 
-require('mini.ai').setup({
-  n_lines = 500,
-
-  custom_textobjects = {
-    -- your existing ones
-    f = require('mini.ai').gen_spec.treesitter({ a = '@function.outer',    i = '@function.inner'    }),
-    c = require('mini.ai').gen_spec.treesitter({ a = '@class.outer',       i = '@class.inner'       }),
-
-    -- now add loops under 'u' (for “looP”)
-    u = require('mini.ai').gen_spec.treesitter({ a = '@loop.outer',        i = '@loop.inner'        }),
-    -- and blocks under 'b'
-    b = require('mini.ai').gen_spec.treesitter({ a = '@block.outer',       i = '@block.inner'       }),
-    -- and conditionals under 'o' (think “if/Else”)
-    o = require('mini.ai').gen_spec.treesitter({ a = '@conditional.outer', i = '@conditional.inner' }),
-  },
-
-  mappings = {
-    around       = 'a',
-    inside       = 'i',
-    around_next  = 'an',
-    inside_next  = 'in',
-    around_last  = 'al',
-    inside_last  = 'il',
-    goto_left    = 'g[',
-    goto_right   = 'g]',
-  },
-})
+-- require('mini.ai').setup({
+--   n_lines = 500,
+--
+--   custom_textobjects = {
+--     -- your existing ones
+--     f = require('mini.ai').gen_spec.treesitter({ a = '@function.outer',    i = '@function.inner'    }),
+--     c = require('mini.ai').gen_spec.treesitter({ a = '@class.outer',       i = '@class.inner'       }),
+--
+--     -- now add loops under 'u' (for “looP”)
+--     u = require('mini.ai').gen_spec.treesitter({ a = '@loop.outer',        i = '@loop.inner'        }),
+--     -- and blocks under 'b'
+--     b = require('mini.ai').gen_spec.treesitter({ a = '@block.outer',       i = '@block.inner'       }),
+--     -- and conditionals under 'o' (think “if/Else”)
+--     o = require('mini.ai').gen_spec.treesitter({ a = '@conditional.outer', i = '@conditional.inner' }),
+--   },
+--
+--   mappings = {
+--     around       = 'a',
+--     inside       = 'i',
+--     around_next  = 'an',
+--     inside_next  = 'in',
+--     around_last  = 'al',
+--     inside_last  = 'il',
+--     goto_left    = 'g[',
+--     goto_right   = 'g]',
+--   },
+-- })
 
 
 -- Set up mini.surround with simplified keys
@@ -197,7 +243,7 @@ require('mini.surround').setup({
     add = 's', -- Add surrounding in Normal and Visual modes
     delete = 'sd', -- Delete surrounding
     find = 'sf', -- Find surrounding (to the right)
-    find_left = 'sF', -- Find surrounding (to the left)
+    find_left = 'sF', -- Find "surrounding" ;(to the left)
     highlight = 'sh', -- Highlight surrounding
     replace = 'sr', -- Replace surrounding
     update_n_lines = 'sn', -- Update `n_lines`
@@ -245,29 +291,26 @@ vim.api.nvim_create_autocmd("VimEnter", {
 -- Marks
 
 require'marks'.setup {
-     default_mappings = true,
-     builtin_marks = { ".", "<", ">", "^" },
-     cyclic = true,
-     force_write_shada = false,
-     refresh_interval = 250,
-     sign_priority = { lower=10, upper=15, builtin=8, bookmark=20 },
-     excluded_filetypes = {},
-     excluded_buftypes = {},
-     bookmark_0 = {
-          sign = "⚑",
-          virt_text = "hello world",
-          annotate = false,
-     },
-     mappings = {}
+    default_mappings = true,
+    builtin_marks = { ".", "<", ">", "^" },
+    cyclic = true,
+    force_write_shada = false,
+    refresh_interval = 250,
+    sign_priority = { lower=10, upper=15, builtin=8, bookmark=20 },
+    excluded_filetypes = {},
+    excluded_buftypes = {},
+    bookmark_0 = {
+        sign = "⚑",
+        virt_text = "hello world",
+        annotate = false,
+    },
+    mappings = {
+        next = ">",     -- Go to next mark with )
+        prev = "<",     -- Go to previous mark with (
+        }
 }
 
 
-require('marks').setup {
-     mappings = {
-          next = ">",     -- Go to next mark with )
-          prev = "<",     -- Go to previous mark with (
-          }
-     }
 -- CUTLASS
 -- Revert 'x' to its default behavior (delete character)
 -- vim.keymap.set('n', 'x', 'x', { noremap = true })  -- Normal mode: 'x' deletes character
@@ -335,7 +378,7 @@ require('lualine').setup {
 
 
 -- backspace
-vim.keymap.set('n', '<BS>', 'Xi', { noremap = true })
+vim.keymap.set('n', '<BS>', 'Xi',  { noremap = true })
 vim.keymap.set('v', '<BS>', '"_d', { noremap = true })
 vim.keymap.set('x', '<BS>', '"_d', { noremap = true })
 
@@ -382,15 +425,15 @@ vim.keymap.set('i', '<S-Tab>', '<C-d>', { noremap = true })
 -- vim.keymap.set('n', '<leader>x', '<C-x>', { noremap = true, desc = 'Decrement number' })
 
 -- enter 
-vim.keymap.set('n', '<CR>', 'i<CR><Esc>', { noremap = true })
--- vim.keymap.set('n', '<leader><CR>', 'i<CR>', { noremap = true })
-        
-
-
 -- In visual mode: create line breaks at selection boundaries
 -- In visual block mode: maintain the block selection after pressing Enter
+
+vim.keymap.set('n', '<CR>', 'a<CR><Esc>', { noremap = true })
+vim.keymap.set('n', '<leader><CR>', 'i<CR>', { noremap = true })
 vim.keymap.set('v', '<CR>', 'd<CR><Esc>P', { noremap = true })
 vim.keymap.set('x', '<CR>', '<C-v><CR>', { noremap = true })
+
+
 
 
 --ctrl + A to select all 
@@ -399,16 +442,16 @@ vim.keymap.set('n', '<C-a>', 'ggVG', { noremap = true })
 
 -- Fix Alt+Up/Down mappings
 -- Visual mode
-vim.keymap.set('v', '<A-Up>', ":m '<-2<CR>gv=gv", { desc = 'Move selection up', noremap = true })
-vim.keymap.set('v', '<A-Down>', ":m '>+1<CR>gv=gv", { desc = 'Move selection down', noremap = true })
-vim.keymap.set('i', '<A-Down>', '<Esc>:m .+1<CR>==gi', { desc = 'Move line down', noremap = true })
-vim.keymap.set('n', '<A-Up>', ':m .-2<CR>==', { desc = 'Move line up', noremap = true })
-vim.keymap.set('n', '<A-Down>', ':m .+1<CR>==', { desc = 'Move line down', noremap = true })
+vim.keymap.set('v', '<A-Up>', ":m '<-2<CR>gv=gv", { desc      = 'Move selection up', noremap = true   })
+vim.keymap.set('v', '<A-Down>', ":m '>+1<CR>gv=gv", { desc    = 'Move selection down', noremap = true })
+vim.keymap.set('i', '<A-Down>', '<Esc>:m .+1<CR>==gi', { desc = 'Move line down', noremap = true      })
+vim.keymap.set('n', '<A-Up>', ':m .-2<CR>==', { desc          = 'Move line up', noremap = true        })
+vim.keymap.set('n', '<A-Down>', ':m .+1<CR>==', { desc        = 'Move line down', noremap = true      })
 
-vim.keymap.set('v', '<A-k>', ":m '<-2<CR>gv=gv", { desc = 'Move selection up', noremap = true })
-vim.keymap.set('v', '<A-j>', ":m '>+1<CR>gv=gv", { desc = 'Move selection down', noremap = true })
-vim.keymap.set('i', '<A-j>', '<Esc>:m .+1<CR>==gi', { desc = 'Move line down', noremap = true })
-vim.keymap.set('n', '<A-k>', ':m .-2<CR>==', { desc = 'Move line up', noremap = true })
-vim.keymap.set('n', '<A-j>', ':m .+1<CR>==', { desc = 'Move line down', noremap = true })
+vim.keymap.set('v', '<A-k>', ":m '<-2<CR>gv=gv", { desc       = 'Move selection up', noremap = true   })
+vim.keymap.set('v', '<A-j>', ":m '>+1<CR>gv=gv", { desc       = 'Move selection down', noremap = true })
+vim.keymap.set('i', '<A-j>', '<Esc>:m .+1<CR>==gi', { desc    = 'Move line down', noremap = true      })
+vim.keymap.set('n', '<A-k>', ':m .-2<CR>==', { desc           = 'Move line up', noremap = true        })
+vim.keymap.set('n', '<A-j>', ':m .+1<CR>==', { desc           = 'Move line down', noremap = true      })
 
 vim.o.showmode = false
