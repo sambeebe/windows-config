@@ -168,7 +168,7 @@ require'nvim-treesitter.configs'.setup {
 
       keymaps = {
         -- You can use the capture groups defined in textobjects.scm
-        [Get-ChildItem -Filter "*.mp4" | ForEach-Object { scenedetect -i $_.FullName detect-content split-video }"af"] = "@function.outer",
+	["af"] = "@function.outer",
         ["if"] = "@function.inner",
         ["ac"] = "@class.outer",
         -- You can optionally set descriptions to the mappings (used in the desc parameter of
