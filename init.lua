@@ -168,7 +168,7 @@ require'nvim-treesitter.configs'.setup {
 
       keymaps = {
         -- You can use the capture groups defined in textobjects.scm
-        ["af"] = "@function.outer",
+        [Get-ChildItem -Filter "*.mp4" | ForEach-Object { scenedetect -i $_.FullName detect-content split-video }"af"] = "@function.outer",
         ["if"] = "@function.inner",
         ["ac"] = "@class.outer",
         -- You can optionally set descriptions to the mappings (used in the desc parameter of
@@ -198,7 +198,7 @@ require'nvim-treesitter.configs'.setup {
       -- * query_string: eg '@function.inner'
       -- * selection_mode: eg 'v'
       -- and should return true or false
-      include_surrounding_whitespace = true,
+      include_surrounding_whitespace = false,
     },
   },
 }
@@ -249,7 +249,7 @@ require('mini.surround').setup({
     update_n_lines = 'sn', -- Update `n_lines`
 
     suffix_last = 'l', -- Suffix to search with "prev" method
-    suffix_next = 'n', -- Suffix to search with "next" method
+    suffix_next = 'n', -- Suffix to  search  with "next" method
   }
 })
 
