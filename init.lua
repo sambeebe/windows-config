@@ -381,12 +381,13 @@ vim.api.nvim_create_autocmd("VimEnter", {
 
 		-- Mini.nvim setup
 		require("mini.ai").setup({ n_lines = 500 })
-		require("mini.surround").setup()
-		local statusline = require("mini.statusline")
-		statusline.setup({ use_icons = vim.g.have_nerd_font })
-		statusline.section_location = function()
-			return "%2l:%-2v"
-		end
+
+		-- require("mini.surround").setup()
+		-- local statusline = require("mini.statusline")
+		-- statusline.setup({ use_icons = vim.g.have_nerd_font })
+		-- statusline.section_location = function()
+		-- 	return "%2l:%-2v"
+		-- end
 
 		-- Treesitter setup
 		require("nvim-treesitter.configs").setup({
@@ -488,9 +489,9 @@ vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { desc = "Move line down", noremap 
 -- vim.keymap.set('n', 'x', 'x', { noremap = true })  -- Normal mode: 'x' deletes character
 --
 -- -- Keep your customizations for other commands
--- vim.keymap.set('x', 'x', 'd', { noremap = true })  -- Visual mode: 'x' deletes selection
--- vim.keymap.set('n', 'xx', 'dd', { noremap = true })  -- Normal mode: 'xx' deletes current line
--- vim.keymap.set('n', 'X', 'D', { noremap = true })  -- Normal mode: 'X' deletes to end of line
+vim.keymap.set("x", "x", "d", { noremap = true }) -- Visual mode: 'x' deletes selection
+vim.keymap.set("n", "xx", "dd", { noremap = true }) -- Normal mode: 'xx' deletes current line
+vim.keymap.set("n", "X", "D", { noremap = true }) -- Normal mode: 'X' deletes to end of line
 --
 -- -- Telescope mappings
 vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
@@ -582,7 +583,35 @@ end, {})
 vim.keymap.set("n", ";", ":", { noremap = true })
 vim.keymap.set("n", ":", ";", { noremap = true })
 
--- Remove the default 's' binding to free it up for mini.surround
-vim.keymap.set("n", "s", "<Nop>", { noremap = true })
--- Remap the built-in 's' command to 'cl' which does the same thing
-vim.keymap.set("n", "cl", "s", { desc = "Substitute character (remapped from 's')" })
+-- -- Remove the default 's' binding to free it up for mini.surround
+-- vim.keymap.set("n", "s", "<Nop>", { noremap = true })
+-- -- Remap the built-in 's' command to 'cl' which does the same thing
+-- vim.keymap.set("n", "cl", "s", { desc = "Substitute character (remapped from 's')" })
+
+-- Duplicate current line and comment the original
+vim.keymap.set("n", "<leader>d", function()
+	local line_num = vim.api.nvim_win_get_cursor(0)[1]
+	local line_content = vim.api.nvim_get_current_line()
+	vim.api.nvim_buf_set_lines(0, line_num, line_num, false, { line_content })
+	vim.api.nvim_win_set_cursor(0, { line_num, 0 })
+	vim.cmd("normal gcc")
+	vim.api.nvim_win_set_cursor(0, { line_num + 1, 0 })
+end, { desc = "Duplicate line and comment original" })
+
+-- Set up mini.surround with simplified keys
+require("mini.surround").setup({
+	-- Use shorter keys
+	-- Module mappings. Use `''` (empty string) to disable one.
+	mappings = {
+		add = "s", -- Add surrounding in Normal and Visual modes
+		delete = "sd", -- Delete surrounding
+		find = "sf", -- Find surrounding (to the right)
+		find_left = "sF", -- Find "surrounding" ;(to the left)
+		highlight = "sh", -- Highlight surrounding
+		replace = "sr", -- Replace surrounding
+		update_n_lines = "sn", -- Update `n_lines`
+
+		suffix_last = "l", -- Suffix to search with "prev" method
+		suffix_next = "n", -- Suffix to  search  with "next" method
+	},
+})
