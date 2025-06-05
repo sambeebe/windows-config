@@ -4,9 +4,7 @@ vim.g.have_nerd_font = false
 vim.o.number = true
 vim.o.mouse = "a"
 vim.o.showmode = false
-vim.schedule(function()
-	vim.o.clipboard = "unnamedplus"
-end)
+
 vim.o.breakindent = true
 vim.o.undofile = true
 vim.o.ignorecase = true
@@ -77,6 +75,7 @@ vim.cmd([[
   " Treesitter
   Plug 'nvim-treesitter/nvim-treesitter', { 'do': ':TSUpdate' }
   Plug 'https://github.com/chentoast/marks.nvim'
+  Plug 'https://github.com/svermeulen/vim-cutlass'
   call plug#end()
 ]])
 
@@ -489,9 +488,9 @@ vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { desc = "Move line down", noremap 
 -- vim.keymap.set('n', 'x', 'x', { noremap = true })  -- Normal mode: 'x' deletes character
 --
 -- -- Keep your customizations for other commands
-vim.keymap.set("x", "x", "d", { noremap = true }) -- Visual mode: 'x' deletes selection
-vim.keymap.set("n", "xx", "dd", { noremap = true }) -- Normal mode: 'xx' deletes current line
-vim.keymap.set("n", "X", "D", { noremap = true }) -- Normal mode: 'X' deletes to end of line
+-- vim.keymap.set('x', 'x', 'd', { noremap = true })  -- Visual mode: 'x' deletes selection
+-- vim.keymap.set('n', 'xx', 'dd', { noremap = true })  -- Normal mode: 'xx' deletes current line
+-- vim.keymap.set('n', 'X', 'D', { noremap = true })  -- Normal mode: 'X' deletes to end of line
 --
 -- -- Telescope mappings
 vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
@@ -597,21 +596,6 @@ vim.keymap.set("n", "<leader>d", function()
 	vim.cmd("normal gcc")
 	vim.api.nvim_win_set_cursor(0, { line_num + 1, 0 })
 end, { desc = "Duplicate line and comment original" })
-
--- Set up mini.surround with simplified keys
-require("mini.surround").setup({
-	-- Use shorter keys
-	-- Module mappings. Use `''` (empty string) to disable one.
-	mappings = {
-		add = "s", -- Add surrounding in Normal and Visual modes
-		delete = "sd", -- Delete surrounding
-		find = "sf", -- Find surrounding (to the right)
-		find_left = "sF", -- Find "surrounding" ;(to the left)
-		highlight = "sh", -- Highlight surrounding
-		replace = "sr", -- Replace surrounding
-		update_n_lines = "sn", -- Update `n_lines`
-
-		suffix_last = "l", -- Suffix to search with "prev" method
-		suffix_next = "n", -- Suffix to  search  with "next" method
-	},
-})
+vim.schedule(function()
+	vim.o.clipboard = "unnamedplus"
+end)
