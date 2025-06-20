@@ -22,12 +22,11 @@ vim.o.scrolloff = 10
 vim.o.confirm = true
 vim.keymap.set("n", "<Esc>", "<cmd>nohlsearch<CR>")
 vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Open diagnostic [Q]uickfix list" })
-vim.keymap.set("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
-vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left window" })
-vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
-vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
-vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
 
+-- Remove the default 's' binding to free it up for mini.surround
+vim.keymap.set("n", "s", "<Nop>", { noremap = true })
+-- Remap the built-in 's' command to 'cl' which does the same thing
+vim.keymap.set("n", "cl", "s", { desc = "Substitute character (remapped from 's')" })
 vim.api.nvim_create_autocmd("TextYankPost", {
 	desc = "Highlight when yanking (copying) text",
 	group = vim.api.nvim_create_augroup("kickstart-highlight-yank", { clear = true }),
@@ -71,11 +70,12 @@ vim.cmd([[
   Plug 'folke/tokyonight.nvim'
   Plug 'folke/todo-comments.nvim'
   Plug 'echasnovski/mini.nvim'
-  
+  Plug 'https://github.com/nvim-lualine/lualine.nvim'
   " Treesitter
   Plug 'nvim-treesitter/nvim-treesitter', { 'do': ':TSUpdate' }
   Plug 'https://github.com/chentoast/marks.nvim'
   Plug 'https://github.com/svermeulen/vim-cutlass'
+  Plug 'https://github.com/smoka7/hop.nvim'
   call plug#end()
 ]])
 
@@ -161,7 +161,7 @@ vim.api.nvim_create_autocmd("VimEnter", {
 		vim.keymap.set("n", "<leader>sd", builtin.diagnostics, { desc = "[S]earch [D]iagnostics" })
 		vim.keymap.set("n", "<leader>sr", builtin.resume, { desc = "[S]earch [R]esume" })
 		vim.keymap.set("n", "<leader>s.", builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-		vim.keymap.set("n", "<leader><leader>", builtin.buffers, { desc = "[ ] Find existing buffers" })
+		vim.keymap.set("n", "<leader>ff", builtin.buffers, { desc = "[ ] Find existing buffers" })
 		vim.keymap.set("n", "<leader>/", function()
 			builtin.current_buffer_fuzzy_find(require("telescope.themes").get_dropdown({
 				winblend = 10,
@@ -381,12 +381,47 @@ vim.api.nvim_create_autocmd("VimEnter", {
 		-- Mini.nvim setup
 		require("mini.ai").setup({ n_lines = 500 })
 
-		-- require("mini.surround").setup()
-		-- local statusline = require("mini.statusline")
-		-- statusline.setup({ use_icons = vim.g.have_nerd_font })
-		-- statusline.section_location = function()
-		-- 	return "%2l:%-2v"
-		-- end
+		-- Set up mini.surround with simplified keys
+		require("mini.surround").setup({
+			-- Use shorter keys
+			-- Module mappings. Use `''` (empty string) to disable one.
+			mappings = {
+				add = "s", -- Add surrounding in Normal and Visual modes
+				delete = "sd", -- Delete surrounding
+				find = "sf", -- Find surrounding (to the right)
+				find_left = "sF", -- Find "surrounding" ;(to the left)
+				highlight = "sh", -- Highlight surrounding
+				replace = "sr", -- Replace surrounding
+				update_n_lines = "sn", -- Update `n_lines`
+				suffix_last = "l", -- Suffix to search with "prev" method
+				suffix_next = "n", -- Suffix to  search  with "next" method
+			},
+		})
+
+		-- STATUS LINE
+		require("lualine").setup({
+			options = {
+				icons_enabled = false,
+				theme = "auto",
+				component_separators = { left = "|", right = "|" },
+				section_separators = { left = "", right = "" },
+			},
+			sections = {
+				lualine_a = {
+					{ "mode", padding = { left = 2, right = 2 } },
+				},
+				lualine_b = {
+					{ "branch", icon = "", padding = { left = 2, right = 2 } },
+					{ "diff", padding = { left = 2, right = 2 } },
+					{ "diagnostics", padding = { left = 2, right = 2 } },
+				},
+				lualine_c = {
+					{ "filename", padding = { left = 2, right = 2 } },
+				},
+				-- ...and so on for lualine_x, y, z
+			},
+			-- inactive_sections etc. unchanged
+		})
 
 		-- Treesitter setup
 		require("nvim-treesitter.configs").setup({
@@ -416,10 +451,18 @@ vim.api.nvim_create_autocmd("VimEnter", {
 -- ----------CRUTCHES---------
 
 -- backspace
-vim.keymap.set("n", "<BS>", "Xi", { noremap = true })
+-- vim.keymap.set("n", "<BS>", "Xi", { noremap = true })
+-- vim.keymap.set("v", "<BS>", '"_d', { noremap = true })
+-- vim.keymap.set("x", "<BS>", '"_d', { noremap = true })
+-- Backspace - delete without copying to clipboard
+vim.keymap.set("n", "<BS>", '"_X', { noremap = true }) -- delete char before cursor
 vim.keymap.set("v", "<BS>", '"_d', { noremap = true })
 vim.keymap.set("x", "<BS>", '"_d', { noremap = true })
 
+-- Delete key - delete without copying to clipboard
+vim.keymap.set("n", "<Del>", '"_x', { noremap = true }) -- delete char under cursor
+vim.keymap.set("v", "<Del>", '"_d', { noremap = true })
+vim.keymap.set("x", "<Del>", '"_d', { noremap = true })
 -- undo in insert mode
 vim.api.nvim_set_keymap("i", "<C-z>", "<Esc>ui", { noremap = true })
 
@@ -493,7 +536,7 @@ vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { desc = "Move line down", noremap 
 -- vim.keymap.set('n', 'X', 'D', { noremap = true })  -- Normal mode: 'X' deletes to end of line
 --
 -- -- Telescope mappings
-vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
+-- vim.keymap.set("n", "<leader>ff", "<cmd>Telescope find_files<CR>")
 vim.keymap.set("n", "<leader><leader>", "<cmd>Telescope find_files<CR>")
 vim.keymap.set("n", "<leader>fg", "<cmd>Telescope live_grep<CR>")
 vim.keymap.set("n", "<leader>fb", "<cmd>Telescope buffers<CR>")
@@ -581,11 +624,6 @@ end, {})
 -- Switch : and ; (swap their functionality)
 vim.keymap.set("n", ";", ":", { noremap = true })
 vim.keymap.set("n", ":", ";", { noremap = true })
-
--- -- Remove the default 's' binding to free it up for mini.surround
--- vim.keymap.set("n", "s", "<Nop>", { noremap = true })
--- -- Remap the built-in 's' command to 'cl' which does the same thing
--- vim.keymap.set("n", "cl", "s", { desc = "Substitute character (remapped from 's')" })
 
 -- Duplicate current line and comment the original
 vim.keymap.set("n", "<leader>d", function()
