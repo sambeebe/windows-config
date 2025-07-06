@@ -527,6 +527,12 @@ vim.keymap.set("n", "<A-k>", ":m .-2<CR>==", { desc = "Move line up", noremap = 
 vim.keymap.set("n", "<A-j>", ":m .+1<CR>==", { desc = "Move line down", noremap = true })
 
 -- CUTLASS
+-- Retain current single-character delete with `x`
+vim.keymap.set("n", "x", '"_x', { noremap = true, silent = true, desc = "Delete char without clipboard" })
+
+-- Add operator-pending "cut" functionality with `<leader>x`
+vim.keymap.set("n", "X", '"+d', { noremap = true, silent = true, desc = "Cut to clipboard (motion)" })
+
 -- Revert 'x' to its default behavior (delete character)
 -- vim.keymap.set('n', 'x', 'x', { noremap = true })  -- Normal mode: 'x' deletes character
 --
@@ -637,3 +643,18 @@ end, { desc = "Duplicate line and comment original" })
 vim.schedule(function()
 	vim.o.clipboard = "unnamedplus"
 end)
+
+-- Traditional Cut Behavior (like Notepad++)
+-- Normal mode: Ctrl+X cuts the current line
+vim.keymap.set("n", "<C-x>", '"+dd', {
+	noremap = true,
+	silent = true,
+	desc = "Cut current line to system clipboard",
+})
+
+-- Visual and Visual-Block mode: Ctrl+X cuts selected text
+vim.keymap.set({ "v", "x" }, "<C-x>", '"+d', {
+	noremap = true,
+	silent = true,
+	desc = "Cut selection to system clipboard",
+)
