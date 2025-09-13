@@ -1,32 +1,14 @@
-F15::
-   filePath := Trim(Clipboard, """ `t`n`r")
-   if (filePath = "") {
-   	MsgBox, Clipboard is empty
-   	return
-   }
-   if (!FileExist(filePath)) {
-   	MsgBox, Path does not exist
-   	return
-   }
-   SplitPath, filePath,, dirPath
-   if (InStr(FileExist(filePath), "D")) {
-   	dirPath := filePath
-   }
-   Run, explorer.exe "%dirPath%"
+F15::  ; F15 for Notepad++
+  if WinExist("ahk_exe notepad++.exe") {
+    if WinActive("ahk_exe notepad++.exe") {
+      WinMinimize, ahk_exe notepad++.exe
+    } else {
+      WinActivate, ahk_exe notepad++.exe
+    }
+  } else {
+    Run, C:\Program Files\Notepad++\notepad++.exe
+  }
 return
-
-; F15::  ; F15 for Notepad++
-;   if WinExist("ahk_exe notepad++.exe") {
-;     if WinActive("ahk_exe notepad++.exe") {
-;       WinMinimize, ahk_exe notepad++.exe
-;     } else {
-;       WinActivate, ahk_exe notepad++.exe
-;     }
-;   } else {
-;     Run, C:\Program Files\Notepad++\notepad++.exe
-;   }
-; return
-
 
 F20::  ; F20 for Windows Terminal
   if WinExist("ahk_exe WindowsTerminal.exe") {
@@ -56,15 +38,15 @@ F22::  ; F22 reserved (was Windows Terminal)
 return
 
 F23::  ; F23 for Everything search tool
-  if WinExist("ahk_exe Everything64.exe") {
-    if WinActive("ahk_exe Everything64.exe") {
-      WinMinimize, ahk_exe Everything64.exe
+  if WinExist("ahk_exe Everything.exe") {
+    if WinActive("ahk_exe Everything.exe") {
+      WinMinimize, ahk_exe Everything.exe
     } else {
-      WinActivate, ahk_exe Everything64.exe
+      WinActivate, ahk_exe Everything.exe
     }
   } else {
-    Run, C:\Program Files\Everything 1.5a\Everything64.exe
-    }
+    Run, C:\Program Files\Everything\Everything.exe
+  }
 return
 
 F24::  ; F24 for Chrome

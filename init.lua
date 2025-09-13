@@ -76,6 +76,7 @@ vim.cmd([[
   Plug 'https://github.com/chentoast/marks.nvim'
   Plug 'https://github.com/svermeulen/vim-cutlass'
   Plug 'https://github.com/smoka7/hop.nvim'
+  Plug 'https://github.com/sisoe24/nuketools.nvim'
   call plug#end()
 ]])
 
@@ -83,6 +84,17 @@ vim.cmd([[
 -- Note: With vim-plug, you need to configure plugins after they're loaded
 vim.api.nvim_create_autocmd("VimEnter", {
 	callback = function()
+		require("nuketools").setup({
+			-- clearOutput = true,
+			-- formatOutput = true,
+			-- host = "127.0.0.1",
+			-- port = 54321,
+		})
+
+		-- Nuketools keymaps
+		vim.keymap.set("n", "<leader>nk", ":ExecuteInNuke<CR>", { desc = "Execute in Nuke" })
+		vim.keymap.set("v", "<leader>nk", ":ExecuteSelectionInNuke<CR>", { desc = "Execute selection in Nuke" })
+
 		-- Guess indent setup
 		require("guess-indent").setup()
 
@@ -285,28 +297,28 @@ vim.api.nvim_create_autocmd("VimEnter", {
 		})
 
 		-- Blink.cmp setup
-		local capabilities = require("blink.cmp").get_lsp_capabilities()
-
-		require("blink.cmp").setup({
-			keymap = {
-				preset = "default",
-			},
-			appearance = {
-				nerd_font_variant = "mono",
-			},
-			completion = {
-				documentation = { auto_show = false, auto_show_delay_ms = 500 },
-			},
-			sources = {
-				default = { "lsp", "path", "snippets", "lazydev" },
-				providers = {
-					lazydev = { module = "lazydev.integrations.blink", score_offset = 100 },
-				},
-			},
-			snippets = { preset = "luasnip" },
-			fuzzy = { implementation = "lua" },
-			signature = { enabled = true },
-		})
+		-- local capabilities = require("blink.cmp").get_lsp_capabilities()
+		--
+		-- require("blink.cmp").setup({
+		-- 	keymap = {
+		-- 		preset = "default",
+		-- 	},
+		-- 	appearance = {
+		-- 		nerd_font_variant = "mono",
+		-- 	},
+		-- 	completion = {
+		-- 		documentation = { auto_show = false, auto_show_delay_ms = 500 },
+		-- 	},
+		-- 	sources = {
+		-- 		default = { "lsp", "path", "snippets", "lazydev" },
+		-- 		providers = {
+		-- 			lazydev = { module = "lazydev.integrations.blink", score_offset = 100 },
+		-- 		},
+		-- 	},
+		-- 	snippets = { preset = "luasnip" },
+		-- 	fuzzy = { implementation = "lua" },
+		-- 	signature = { enabled = true },
+		-- })
 
 		-- LuaSnip setup
 		require("luasnip").setup()
@@ -564,25 +576,25 @@ vim.api.nvim_create_autocmd("VimEnter", {
 
 -- Marks
 
-require("marks").setup({
-	default_mappings = true,
-	builtin_marks = { ".", "<", ">", "^" },
-	cyclic = true,
-	force_write_shada = false,
-	refresh_interval = 250,
-	sign_priority = { lower = 10, upper = 15, builtin = 8, bookmark = 20 },
-	excluded_filetypes = {},
-	excluded_buftypes = {},
-	bookmark_0 = {
-		sign = "⚑",
-		virt_text = "hello world",
-		annotate = false,
-	},
-	mappings = {
-		next = ">", -- Go to next mark with )
-		prev = "<", -- Go to previous mark with (
-	},
-})
+-- require("marks").setup({
+-- 	default_mappings = true,
+-- 	builtin_marks = { ".", "<", ">", "^" },
+-- 	cyclic = true,
+-- 	force_write_shada = false,
+-- 	refresh_interval = 250,
+-- 	sign_priority = { lower = 10, upper = 15, builtin = 8, bookmark = 20 },
+-- 	excluded_filetypes = {},
+-- 	excluded_buftypes = {},
+-- 	bookmark_0 = {
+-- 		sign = "⚑",
+-- 		virt_text = "hello world",
+-- 		annotate = false,
+-- 	},
+-- 	mappings = {
+-- 		next = ">", -- Go to next mark with )
+-- 		prev = "<", -- Go to previous mark with (
+-- 	},
+-- })
 
 ----------CUSTOM COMMANDS-------
 --
@@ -657,4 +669,15 @@ vim.keymap.set({ "v", "x" }, "<C-x>", '"+d', {
 	noremap = true,
 	silent = true,
 	desc = "Cut selection to system clipboard",
-)
+})
+
+vim.diagnostic.config({
+	signs = {
+		text = {
+			[vim.diagnostic.severity.ERROR] = "",
+			[vim.diagnostic.severity.WARN] = "",
+			[vim.diagnostic.severity.INFO] = "",
+			[vim.diagnostic.severity.HINT] = "",
+		},
+	},
+})
