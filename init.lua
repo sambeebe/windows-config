@@ -80,21 +80,8 @@ vim.cmd([[
   call plug#end()
 ]])
 
--- Plugin configurations
--- Note: With vim-plug, you need to configure plugins after they're loaded
 vim.api.nvim_create_autocmd("VimEnter", {
 	callback = function()
-		require("nuketools").setup({
-			-- clearOutput = true,
-			-- formatOutput = true,
-			-- host = "127.0.0.1",
-			-- port = 54321,
-		})
-
-		-- Nuketools keymaps
-		vim.keymap.set("n", "<leader>nk", ":ExecuteInNuke<CR>", { desc = "Execute in Nuke" })
-		vim.keymap.set("v", "<leader>nk", ":ExecuteSelectionInNuke<CR>", { desc = "Execute selection in Nuke" })
-
 		-- Guess indent setup
 		require("guess-indent").setup()
 
@@ -459,6 +446,23 @@ vim.api.nvim_create_autocmd("VimEnter", {
 		})
 	end,
 })
+
+-- Add this to your config
+vim.keymap.set("n", "<leader>nk", function()
+	local data = vim.fn.json_encode({
+		text = table.concat(vim.api.nvim_buf_get_lines(0, 0, -1, false), "\n"),
+		file = "",
+		formatText = "0",
+	})
+	local socket = vim.loop.new_tcp()
+	socket:connect("127.0.0.1", 54321, function(err)
+		if not err then
+			socket:write(data, function()
+				socket:close()
+			end)
+		end
+	end)
+end, { desc = "Send buffer to Nuke" })
 
 -- ----------CRUTCHES---------
 
