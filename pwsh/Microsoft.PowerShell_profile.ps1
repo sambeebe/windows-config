@@ -2,18 +2,7 @@ function zz { cd .. }
 function zzz { cd ..\..}
 
 Set-Alias nuke "C:\Program Files\Nuke15.2v5\Nuke15.2.exe"
-function Prompt {
-    $loc = $executionContext.SessionState.Path.CurrentLocation
-    $str = ""
 
-    if ($loc.Provider.Name -eq "FileSystem") {
-        # OSC 9;9 escape sequence with current folder
-        $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
-    }
-
-    $str += "PS $loc$('>' * ($nestedPromptLevel + 1)) "
-    return $str
-}
 
 
 function nn {
@@ -182,10 +171,41 @@ function sort {
 
 
 
-# oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\rudolfs-light.omp.json" | Invoke-Expression
 # oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\spaceship.omp.json" | Invoke-Expression
+#
+# function Prompt {
+#     $loc = $executionContext.SessionState.Path.CurrentLocation
+#     $str = ""
+#
+#     if ($loc.Provider.Name -eq "FileSystem") {
+#         # OSC 9;9 escape sequence with current folder
+#         $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
+#     }
+#
+#     $str += "PS $loc$('>' * ($nestedPromptLevel + 1)) "
+#     return $str
+# }
+#
 
+# Initialize oh-my-posh first and let it define its prompt
+oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\spaceship.omp.json" | Invoke-Expression
 
+# Save the oh-my-posh prompt function before overwriting it
+$global:OriginalPrompt = $function:prompt
 
+# Define your custom wrapper prompt
+function Prompt {
+    $loc = $executionContext.SessionState.Path.CurrentLocation
+    $str = ""
 
+    if ($loc.Provider.Name -eq "FileSystem") {
+        # OSC 9;9 escape sequence with current folder
+        $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
+    }
+
+    # Call oh-my-posh's prompt and append it
+    $str += & $global:OriginalPrompt
+
+    return $str
+}
 
