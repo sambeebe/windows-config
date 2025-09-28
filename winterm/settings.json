@@ -3,6 +3,7 @@
     "$schema": "https://aka.ms/terminal-profiles-schema",
 	"multiLinePasteWarning": false,
 	"largePasteWarning": false,
+	
     "actions": 
     [
         {
@@ -194,6 +195,8 @@
                 "source": "Microsoft.WSL"
             },
             {
+				
+				"commandline": "pwsh.exe -NoLogo",
                 "font": 
                 {
                     "face": "CaskaydiaMono Nerd Font Mono"
