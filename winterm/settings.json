@@ -195,8 +195,6 @@
                 "source": "Microsoft.WSL"
             },
             {
-				
-				"commandline": "pwsh.exe -NoLogo",
                 "font": 
                 {
                     "face": "CaskaydiaMono Nerd Font Mono"

@@ -1,3 +1,22 @@
+function Prompt {
+    $loc = $executionContext.SessionState.Path.CurrentLocation
+
+    if ($loc.Provider.Name -eq 'FileSystem') {
+        # Emit OSC 9;9 with the FULL path so Windows Terminal can track CWD for pane splits
+        $osc = "`e]9;9;`"$($loc.ProviderPath)`"`e\"
+        Write-Host $osc -NoNewline
+    }
+
+    $parts = ($loc.ProviderPath -split '[\\/]') | Where-Object { $_ }
+    $lastTwo = if ($parts.Count -ge 2) { ($parts[-1..-1] -join '\') } else { $parts[-1] }
+
+    # Explicitly set the path color to white/gray, chevron in cyan
+    Write-Host $lastTwo -ForegroundColor White -NoNewline
+    Write-Host (' >' * ($nestedPromptLevel + 1)) -ForegroundColor Cyan -NoNewline
+
+    return ' '
+}
+
 
 function zz { cd .. }
 function zzz { cd ..\..}
@@ -168,12 +187,28 @@ function sort {
 
 
 
+# function prompt {
+#     $pathParts = (Get-Location).Path -split '\\'
+#     $lastTwo = $pathParts[-1..-1] -join '\'
+#     Write-Host "$lastTwo" -NoNewline
+#     Write-Host " >" -ForegroundColor Cyan -NoNewline
+#     return " "
+# }
 
 
 
 
+
+
+
+
+# # Initialize oh-my-posh first and let it define its prompt
 # oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\spaceship.omp.json" | Invoke-Expression
 #
+# # Save the oh-my-posh prompt function before overwriting it
+# $global:OriginalPrompt = $function:prompt
+#
+# # Define your custom wrapper prompt
 # function Prompt {
 #     $loc = $executionContext.SessionState.Path.CurrentLocation
 #     $str = ""
@@ -183,30 +218,9 @@ function sort {
 #         $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
 #     }
 #
-#     $str += "PS $loc$('>' * ($nestedPromptLevel + 1)) "
+#     # Call oh-my-posh's prompt and append it
+#     $str += & $global:OriginalPrompt
+#
 #     return $str
 # }
-#
-
-# Initialize oh-my-posh first and let it define its prompt
-oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\spaceship.omp.json" | Invoke-Expression
-
-# Save the oh-my-posh prompt function before overwriting it
-$global:OriginalPrompt = $function:prompt
-
-# Define your custom wrapper prompt
-function Prompt {
-    $loc = $executionContext.SessionState.Path.CurrentLocation
-    $str = ""
-
-    if ($loc.Provider.Name -eq "FileSystem") {
-        # OSC 9;9 escape sequence with current folder
-        $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
-    }
-
-    # Call oh-my-posh's prompt and append it
-    $str += & $global:OriginalPrompt
-
-    return $str
-}
 
