@@ -1,19 +1,14 @@
 ; Press Ctrl+Alt+T inside Explorer to open the current folder in a terminal
 ^!t::
-    ; Get the active window’s folder path
+    ; Get the active window's folder path
     explorerHwnd := WinActive("ahk_class CabinetWClass")
     if !explorerHwnd {
         MsgBox, 48, Error, No Explorer window is active.
         return
     }
 
-    for window in ComObjCreate("Shell.Application").Windows
-    {
-        if (window.hwnd = explorerHwnd) {
-            currentPath := window.Document.Folder.Self.Path
-            break
-        }
-    }
+    ; Use the same method as forceExplorerTabs.ahk to get active tab path
+    currentPath := GetActiveTabPath(explorerHwnd)
 
     if (currentPath = "")
     {
@@ -22,8 +17,51 @@
     }
 
     ; Open PowerShell in that directory
-    Run, powershell.exe -NoExit -Command "Set-Location -LiteralPath '%currentPath%'"
+    Run, pwsh -NoExit -Command "Set-Location -LiteralPath '%currentPath%'"
 return
+
+; Function adapted from forceExplorerTabs.ahk logic
+GetActiveTabPath(hwnd) {
+    static IID_IShellBrowser := "{000214E2-0000-0000-C000-000000000046}"
+
+    shellWindows := ComObjCreate("Shell.Application").Windows
+
+    ; Get the active tab control handle
+    ControlGet, activeTab, Hwnd,, ShellTabWindowClass1, ahk_id %hwnd%
+
+    for window in shellWindows {
+        try {
+            if (window.hwnd != hwnd)
+                continue
+
+            ; If we have tabs, check which one is active
+            if (activeTab) {
+                ; Try to get shell browser interface
+                try {
+                    shellBrowser := ComObjQuery(window, IID_IShellBrowser, IID_IShellBrowser)
+                    if (shellBrowser) {
+                        ; Get the current view's tab handle
+                        DllCall(NumGet(NumGet(shellBrowser+0)+3*A_PtrSize), "Ptr", shellBrowser, "UInt*", thisTab)
+
+                        ; If this isn't the active tab, skip it
+                        if (thisTab != activeTab)
+                            continue
+                    }
+                } catch e {
+                    ; If we can't get shell browser, fall back to basic method
+                }
+            }
+
+            ; Get the path from this window/tab
+            return window.Document.Folder.Self.Path
+
+        } catch e {
+            continue
+        }
+    }
+
+    return ""
+}
 
 ; Press Ctrl+Alt+O to open parent directory of the full path in clipboard
 ^!o::
