@@ -117,7 +117,43 @@ del alias:history -force 2> $null
 function history {Get-Content (Get-PSReadlineOption).HistorySavePath
 }
 
-function e() { explorer . }
+function e() {
+    $proc = Start-Process explorer . -PassThru
+    Start-Sleep -Milliseconds 800
+
+    # Bring the window to front using AppActivate
+    try {
+        $shell = New-Object -ComObject Shell.Application
+        $shell.Windows() | Where-Object { $_.HWND -eq $proc.MainWindowHandle } | ForEach-Object {
+            $_.Visible = $true
+        }
+
+        # Alternative method using ShowWindowAsync
+        Add-Type -TypeDefinition @"
+            using System;
+            using System.Runtime.InteropServices;
+            public class User32 {
+                [DllImport("user32.dll")]
+                public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
+                [DllImport("user32.dll")]
+                public static extern bool SetForegroundWindow(IntPtr hWnd);
+            }
+"@ -ErrorAction SilentlyContinue
+
+        if ($proc.MainWindowHandle -ne [IntPtr]::Zero) {
+            [User32]::ShowWindowAsync($proc.MainWindowHandle, 9) # SW_RESTORE
+            [User32]::SetForegroundWindow($proc.MainWindowHandle)
+        }
+    }
+    catch {
+        # Fallback: just activate any explorer window
+        Get-Process explorer | Where-Object { $_.MainWindowTitle -ne "" } | ForEach-Object {
+            $_.MainWindowHandle | ForEach-Object {
+                [User32]::SetForegroundWindow($_)
+            }
+        } | Select-Object -First 1
+    }
+}
 function n($in) { nvim $in }
 function nvcon() {
     cd "C:\Users\samue\AppData\Local\nvim"
