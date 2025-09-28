@@ -52,6 +52,12 @@ return
     }
 
     Run, explorer.exe "%parentDir%"
+
+    ; Force the Explorer window to come to the foreground
+    Sleep, 500  ; Wait for Explorer to open
+    WinActivate, ahk_class CabinetWClass
+    WinRestore, ahk_class CabinetWClass  ; Restore if minimized
+    WinShow, ahk_class CabinetWClass     ; Ensure it's visible
 return
 
 

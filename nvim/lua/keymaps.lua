@@ -224,8 +224,9 @@ local function replace_quoted_with_clipboard()
 			local end_pos = vim.fn.getpos("'>")
 
 			if start_pos[2] ~= end_pos[2] or start_pos[3] ~= end_pos[3] then
-				-- We have a selection, paste the clipboard
-				vim.cmd('normal! "' .. vim.v.register .. 'p')
+				-- We have a selection, replace with clipboard content
+				vim.cmd('normal! "_c')
+				vim.cmd('normal! "+p')
 				return
 			end
 		end

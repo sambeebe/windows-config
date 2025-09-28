@@ -24,7 +24,4 @@ vim.o.scrolloff = 10
 vim.o.confirm = true
 vim.opt.relativenumber = true
 
--- Clipboard setup
-vim.schedule(function()
-	vim.o.clipboard = "unnamedplus"
-end)
+-- Clipboard setup removed - using cutlass plugin instead

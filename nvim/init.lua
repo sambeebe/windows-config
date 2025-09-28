@@ -588,9 +588,7 @@ vim.api.nvim_create_user_command("T", function()
 	end
 end, {})
 
-vim.schedule(function()
-	vim.o.clipboard = "unnamedplus"
-end)
+-- Clipboard setting removed - using cutlass plugin instead
 
 -- Load custom keymaps
 require("keymaps")
