@@ -1,4 +1,24 @@
+function zz { cd .. }
+function zzz { cd ..\..}
 
+Set-Alias nuke "C:\Program Files\Nuke15.2v5\Nuke15.2.exe"
+function Prompt {
+    $loc = $executionContext.SessionState.Path.CurrentLocation
+    $str = ""
+
+    if ($loc.Provider.Name -eq "FileSystem") {
+        # OSC 9;9 escape sequence with current folder
+        $str += "`e]9;9;`"$($loc.ProviderPath)`"`e\"
+    }
+
+    $str += "PS $loc$('>' * ($nestedPromptLevel + 1)) "
+    return $str
+}
+
+
+function nn {
+	nkk && nki && nkl
+}
 # Add to your PowerShell profile ($PROFILE)
 function Stop-NukeSessions {
     [CmdletBinding(SupportsShouldProcess)]
@@ -33,11 +53,14 @@ function Stop-NukeSessions {
 # Handy alias: run `nuke-kill` to terminate all Nuke sessions
 Set-Alias nkk Stop-NukeSessions
 
+function nkt { 	& "C:\Program Files\Nuke15.2v5\Nuke15.2.exe" "C:\Users\samue\tlm\templates\TEMP_0000_int_postvis_v0000.nk"
+}
+
 function nki {
 	& C:\Users\samue\tlm\scripts\nuke\install-nuke-pipeline.bat 
 }
 function nkl {
-	& "C:\Users\samue\tlm\Z\Projects\Snowman\Shots\SNO\0010\nuke\SNO_0010_postvis_int_v0001.nk"
+	& "C:\Program Files\Nuke15.2v5\Nuke15.2.exe" "C:\Users\samue\tlm\Z\Projects\Snowman\Shots\SNO\0010\postvis\nuke\SNO_0010_postvis_int_v0001.nk"
 }
 function runc {
     param(
@@ -96,7 +119,10 @@ function history {Get-Content (Get-PSReadlineOption).HistorySavePath
 
 function e() { explorer . }
 function n($in) { nvim $in }
-function nvcon() {nvim "C:\Users\samue\AppData\Local\nvim\init.lua"}
+function nvcon() {
+    cd "C:\Users\samue\AppData\Local\nvim"
+    nvim "C:\Users\samue\AppData\Local\nvim\init.lua"
+}
 function nvpro() {nvim $profile}
 function mi($in) {mediainfo $in}
 function ffp($in) {ffprobe -hide_banner $in}
@@ -112,4 +138,17 @@ function lsd {
 function sort {
 	cd "C:\Users\samue\of_v0.11.2_vs2017_release\apps\myApps\Sorting2023\src"
 }
+
+
+
+
+
+
+
+
+# oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\rudolfs-light.omp.json" | Invoke-Expression
+# oh-my-posh init pwsh --config "C:\Users\samue\oh-my-posh-main\oh-my-posh-main\themes\spaceship.omp.json" | Invoke-Expression
+
+
+
 

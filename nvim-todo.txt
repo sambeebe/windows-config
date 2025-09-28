@@ -1,3 +1,0 @@
-- ctrl+arrow in insert
-- delete to "_
-- undo better in insert 
