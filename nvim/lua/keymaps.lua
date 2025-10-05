@@ -16,9 +16,13 @@ vim.keymap.set("x", "<Del>", '"_d', { noremap = true })
 -- undo in insert mode
 vim.api.nvim_set_keymap("i", "<C-z>", "<Esc>ui", { noremap = true })
 
--- Map Ctrl+C to copy text in visual mode
--- Map Ctrl+Z for undo in normal mode (already have it in insert mode)
-vim.keymap.set("v", "<C-c>", '"+y', { noremap = true, desc = "Copy selection to clipboard" })
+-- Ctrl+C to copy in visual mode
+-- Ctrl+V to paste in normal, visual, and insert modes
+-- Ctrl+Z for undo
+vim.keymap.set("v", "<C-c>", "y", { noremap = true, silent = true, desc = "Copy selection" })
+vim.keymap.set("n", "<C-v>", '"+p', { noremap = true, silent = true, desc = "Paste in normal mode" })
+vim.keymap.set("v", "<C-v>", '"+p', { noremap = true, silent = true, desc = "Paste in visual mode" })
+vim.keymap.set("i", "<C-v>", "<C-r>+", { noremap = true, silent = true, desc = "Paste in insert mode" })
 vim.keymap.set("n", "<C-z>", "u", { noremap = true, desc = "Undo in normal mode" })
 
 -- Normal mode: duplicate current line
@@ -33,6 +37,9 @@ vim.keymap.set("i", "<C-s>", "<Esc>:w<CR>", { noremap = true, silent = true, des
 vim.keymap.set("n", "<C-s>", ":w<CR>", { noremap = true, silent = true, desc = "Save in normal mode" })
 
 -- TAB
+-- Use Ctrl+j for jump forward (since Ctrl+i conflicts with Tab)
+vim.keymap.set("n", "<C-j>", "<C-i>", { noremap = true, silent = true, desc = "Jump forward in jump list" })
+
 -- Clear any prior Tab mappings to avoid conflicts
 -- Ensure Tab works for indentation even on non-blank lines
 -- Shift + Tab to un-indent
@@ -161,7 +168,7 @@ local function open_quoted_path_in_explorer()
 	local col = vim.api.nvim_win_get_cursor(0)[2] + 1 -- Convert to 1-based indexing
 
 	-- Find quotes around cursor position
-	local quote_chars = {'"', "'", "`"}
+	local quote_chars = { '"', "'", "`" }
 	local start_pos, end_pos, quote_char = nil, nil, nil
 
 	for _, q in ipairs(quote_chars) do
@@ -198,7 +205,9 @@ local function open_quoted_path_in_explorer()
 
 	-- Simulate Ctrl+Alt+O key combination
 	-- Using PowerShell to send the key combination
-	local cmd = string.format([[powershell.exe -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^%%o')"]])
+	local cmd = string.format(
+		[[powershell.exe -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^%%o')"]]
+	)
 	vim.fn.system(cmd)
 
 	print("Copied path: " .. path .. " and triggered Ctrl+Alt+O")
@@ -210,7 +219,7 @@ vim.keymap.set("n", "<leader>o", open_quoted_path_in_explorer, { desc = "Open qu
 -- Function to replace content inside quotes with clipboard
 local function replace_quoted_with_clipboard()
 	-- Try each quote type and see if we can select inside it
-	local quote_chars = {'"', "'", "`"}
+	local quote_chars = { '"', "'", "`" }
 
 	for _, q in ipairs(quote_chars) do
 		-- Try to select inside the quotes
@@ -237,4 +246,3 @@ end
 
 -- Keymap to replace quoted content with clipboard
 vim.keymap.set("n", "<leader>rq", replace_quoted_with_clipboard, { desc = "Replace quoted content with clipboard" })
-

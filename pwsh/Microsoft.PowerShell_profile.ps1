@@ -1,3 +1,59 @@
+function notes {
+    cd C:\Users\samue\notes
+    nvim notes.txt
+}
+
+function Compare-Files {
+    param(
+        [Parameter(Mandatory=$true)] [string]$File1,
+        [Parameter(Mandatory=$true)] [string]$File2
+    )
+
+    $h1 = (Get-FileHash -Path $File1 -Algorithm SHA256).Hash
+    $h2 = (Get-FileHash -Path $File2 -Algorithm SHA256).Hash
+
+    if ($h1 -eq $h2) {
+        Write-Output "Identical"
+    } else {
+        Write-Output "Different"
+    }
+}
+
+Set-Alias cf Compare-Files
+
+
+
+# function Prompt {
+#     $loc = $executionContext.SessionState.Path.CurrentLocation
+#
+#     if ($loc.Provider.Name -eq 'FileSystem') {
+#         # Emit OSC 9;9 with the FULL path so Windows Terminal can track CWD for pane splits
+#         $osc = "`e]9;9;`"$($loc.ProviderPath)`"`e\"
+#         Write-Host $osc -NoNewline
+#     }
+#
+#     $path = $loc.ProviderPath
+#
+#     # Collapse long paths like C:\Users\JohnDoe\Documents\Dev\Project -> C:\...\Project
+#     $maxParts = 3
+#     $parts = ($path -split '[\\/]') | Where-Object { $_ }
+#     if ($parts.Count -gt $maxParts) {
+#         $shortPath = "$($parts[0])\...\$($parts[-2])\$($parts[-1])"
+#     } else {
+#         $shortPath = $path
+#     }
+#
+#     # Print shortened path in white
+#     Write-Host $shortPath -ForegroundColor White
+#
+#     # New line for command input with cyan >
+#     Write-Host ('>' * ($nestedPromptLevel + 1)) -ForegroundColor Cyan -NoNewline
+#
+#     return ' '
+# }
+
+
+
 function Prompt {
     $loc = $executionContext.SessionState.Path.CurrentLocation
 
@@ -8,7 +64,7 @@ function Prompt {
     }
 
     $parts = ($loc.ProviderPath -split '[\\/]') | Where-Object { $_ }
-    $lastTwo = if ($parts.Count -ge 2) { ($parts[-1..-1] -join '\') } else { $parts[-1] }
+    $lastTwo = if ($parts.Count -ge 2) { ($parts[-3..-1] -join '\') } else { $parts[-1] }
 
     # Explicitly set the path color to white/gray, chevron in cyan
     Write-Host $lastTwo -ForegroundColor White -NoNewline
@@ -20,6 +76,7 @@ function Prompt {
 
 function zz { cd .. }
 function zzz { cd ..\..}
+function mkcd($in) { mkdir $in && cd $in }
 
 Set-Alias nuke "C:\Program Files\Nuke15.2v5\Nuke15.2.exe"
 
@@ -171,18 +228,92 @@ function nvcon() {
 function nvpro() {nvim $profile}
 function mi($in) {mediainfo $in}
 function ffp($in) {ffprobe -hide_banner $in}
+function ffs($in) {ffprobe -v error -show_streams -select_streams v:0 $in}
 
 Set-PSReadLineOption -PredictionSource History
 Set-PSReadLineOption -PredictionViewStyle ListView
 
-
 function lsd {
-    dir | Sort-Object LastWriteTime -Descending | Select-Object LastWriteTime, Name, Length
+    dir | Sort-Object LastWriteTime -Descending |
+        Format-Table @{Label="LastWriteTime"; Expression={$_.LastWriteTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
 }
 
-function sort {
-	cd "C:\Users\samue\of_v0.11.2_vs2017_release\apps\myApps\Sorting2023\src"
+function lsn {
+    dir | Sort-Object Name |
+        Format-Table @{Label="LastWriteTime"; Expression={$_.LastWriteTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
 }
+
+function lsnr {
+    dir | Sort-Object Name -Descending |
+        Format-Table @{Label="LastWriteTime"; Expression={$_.LastWriteTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
+}
+
+function lss {
+    dir | Sort-Object Length -Descending |
+        Format-Table @{Label="Size(KB)"; Expression={[math]::Round($_.Length / 1KB,2)}; Width=10},
+                     @{Label="LastWriteTime"; Expression={$_.LastWriteTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
+}
+
+function lsext {
+    dir | Sort-Object Extension |
+        Format-Table @{Label="Extension"; Expression={$_.Extension}; Width=10},
+                     @{Label="LastWriteTime"; Expression={$_.LastWriteTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
+}
+
+function lsc {
+    dir | Sort-Object CreationTime -Descending |
+        Format-Table @{Label="CreationTime"; Expression={$_.CreationTime}; Width=20},
+                     @{Label="Name"; Expression={$_.Name}; Width=40} -AutoSize
+}
+
+function lshelp {
+    @"
+Available directory listing helpers:
+
+  lsd   - List by LastWriteTime (descending, newest first)
+  lsn   - List by Name (ascending, A → Z)
+  lsnr  - List by Name (descending, Z → A)
+  lss   - List by Size (descending, largest first)
+  lsext - List by Extension (ascending)
+  lsc   - List by CreationTime (descending, newest first)
+
+Aliases:
+  ls -> lsd
+   l -> lsd
+"@
+}
+
+# Aliases
+Set-Alias ls lsd
+Set-Alias d  lsd
+Set-Alias l  lsn
+
+
+function cpath {
+    param(
+        [Parameter(ValueFromPipeline=$true, ValueFromRemainingArguments=$true)]
+        [string]$Path
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        # No arg: use current dir
+        $full = (Get-Location).Path
+    } else {
+        $full = (Resolve-Path -Path $Path -ErrorAction Stop).Path
+    }
+
+    $full | Set-Clipboard
+    Write-Output "Copied: $full"
+}
+
+# Short alias
+Set-Alias c cpath
+
 
 
 

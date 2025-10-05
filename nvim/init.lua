@@ -1,6 +1,10 @@
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 vim.g.have_nerd_font = false
+
+-- Use system clipboard as default register
+vim.opt.clipboard = "unnamedplus"
+
 vim.o.number = true
 vim.o.mouse = "a"
 vim.o.showmode = false
@@ -508,6 +512,44 @@ vim.keymap.set("n", "<leader>nk", function()
 	end)
 end, { desc = "Send buffer to Nuke" })
 
+vim.keymap.set("n", "<leader>ni", function()
+	-- Execute PowerShell with the 'nki' command and wait for completion
+	print("Executing PowerShell command 'nki'...")
+	local result = vim.fn.system('pwsh.exe -Command "nki"')
+	print("PowerShell command 'nki' completed")
+
+	-- After PowerShell completes, send the specific Python file to Nuke
+	local python_file_path = vim.fn.expand("~/.nuke/tlmPipeline/__init__.py")
+
+	-- Check if the file exists
+	if vim.fn.filereadable(python_file_path) == 1 then
+		-- Read the Python file content
+		local file_content = vim.fn.readfile(python_file_path)
+		local text = table.concat(file_content, "\n")
+
+		-- Send to Nuke using the same method as the nuketools plugin
+		local data = vim.fn.json_encode({
+			text = text,
+			file = python_file_path,
+			formatText = "0",
+		})
+
+		local socket = vim.loop.new_tcp()
+		socket:connect("127.0.0.1", 54321, function(err)
+			if not err then
+				socket:write(data, function()
+					socket:close()
+					print("Python file sent to Nuke: " .. python_file_path)
+				end)
+			else
+				print("Error connecting to Nuke: " .. err)
+			end
+		end)
+	else
+		print("Python file not found: " .. python_file_path)
+	end
+end, { desc = "Execute PowerShell nki command and send Python file to Nuke" })
+
 -- Auto open Telescope when Neovim is started in a directory
 -- Auto open Telescope when Neovim is started in a directory, but not when opening a file
 vim.api.nvim_create_autocmd("VimEnter", {
@@ -558,14 +600,6 @@ vim.api.nvim_create_user_command("F", function()
 	print("PowerShell command 'e' executed")
 end, {})
 
--- Create custom command to execute PowerShell's "e" command
-vim.api.nvim_create_user_command("NN", function()
-	-- Execute PowerShell with the 'e' command
-	vim.fn.system('powershell.exe -Command "nn"')
-	-- Print a confirmation message
-	print("PowerShell command 'nn' executed")
-end, {})
-
 -- Define a custom command to reload the Neovim configuration
 vim.api.nvim_create_user_command("RC", "source C:/Users/samue/AppData/Local/nvim/init.lua", { nargs = 0 })
 
@@ -587,8 +621,6 @@ vim.api.nvim_create_user_command("T", function()
 		print("Switched to relative line numbers")
 	end
 end, {})
-
--- Clipboard setting removed - using cutlass plugin instead
 
 -- Load custom keymaps
 require("keymaps")
