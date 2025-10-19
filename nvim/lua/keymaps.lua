@@ -233,9 +233,32 @@ local function replace_quoted_with_clipboard()
 			local end_pos = vim.fn.getpos("'>")
 
 			if start_pos[2] ~= end_pos[2] or start_pos[3] ~= end_pos[3] then
-				-- We have a selection, replace with clipboard content
+				-- Get clipboard content
+				local clipboard_content = vim.fn.getreg("+")
+
+				-- Try to extract content from within quotes in clipboard
+				-- This handles cases like r"C:/yada" or "C:/yada" or 'C:/yada'
+				local extracted = nil
+				for _, strip_q in ipairs(quote_chars) do
+					-- Escape the quote character for pattern matching
+					local escaped_q = strip_q:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%1")
+					local pattern = escaped_q .. "(.-)" .. escaped_q
+					local match = clipboard_content:match(pattern)
+					if match then
+						extracted = match
+						break
+					end
+				end
+
+				-- Use the extracted content if found, otherwise use clipboard as-is
+				local content_to_paste = extracted or clipboard_content
+
+				-- Strip trailing newlines from the content we're about to paste
+				content_to_paste = content_to_paste:gsub("[\r\n]+$", "")
+
+				-- Replace selection with processed clipboard content
 				vim.cmd('normal! "_c')
-				vim.cmd('normal! "+p')
+				vim.api.nvim_put({content_to_paste}, "c", true, true)
 				return
 			end
 		end
