@@ -19,11 +19,22 @@ vim.api.nvim_set_keymap("i", "<C-z>", "<Esc>ui", { noremap = true })
 -- Ctrl+C to copy in visual mode
 -- Ctrl+V to paste in normal, visual, and insert modes
 -- Ctrl+Z for undo
-vim.keymap.set("v", "<C-c>", "y", { noremap = true, silent = true, desc = "Copy selection" })
+vim.keymap.set("v", "<C-c>", '"+y', { noremap = true, silent = true, desc = "Copy selection to clipboard" })
 vim.keymap.set("n", "<C-v>", '"+p', { noremap = true, silent = true, desc = "Paste in normal mode" })
-vim.keymap.set("v", "<C-v>", '"+p', { noremap = true, silent = true, desc = "Paste in visual mode" })
+vim.keymap.set("v", "<C-v>", '"_d"+P', { noremap = true, silent = true, desc = "Paste in visual mode" })
 vim.keymap.set("i", "<C-v>", "<C-r>+", { noremap = true, silent = true, desc = "Paste in insert mode" })
 vim.keymap.set("n", "<C-z>", "u", { noremap = true, desc = "Undo in normal mode" })
+
+-- Duplicate current line and comment the original
+-- vim.keymap.set("n", "<leader>d", function()
+vim.keymap.set("n", "<leader>D", function()
+	local line_num = vim.api.nvim_win_get_cursor(0)[1]
+	local line_content = vim.api.nvim_get_current_line()
+	vim.api.nvim_buf_set_lines(0, line_num, line_num, false, { line_content })
+	vim.api.nvim_win_set_cursor(0, { line_num, 0 })
+	vim.cmd("normal gcc")
+	vim.api.nvim_win_set_cursor(0, { line_num + 1, 0 })
+end, { desc = "Duplicate line and comment original" })
 
 -- Normal mode: duplicate current line
 -- Visual mode: duplicate selected lines
@@ -31,6 +42,18 @@ vim.keymap.set("n", "<C-z>", "u", { noremap = true, desc = "Undo in normal mode"
 vim.keymap.set("n", "<C-g>", "yyp", { noremap = true, desc = "Duplicate line" })
 vim.keymap.set("v", "<C-g>", "y`>p", { noremap = true, desc = "Duplicate selection" })
 vim.keymap.set("i", "<C-g>", "<Esc>yypi", { noremap = true, desc = "Duplicate line" })
+
+-- vim.keymap.set("n", "<C-A-s>", function()
+-- 	-- Get comment leader for current filetype (e.g. "#", "//", etc.)
+-- 	local comment_leader = vim.bo.commentstring:match("^(.*)%%s")
+-- 	if not comment_leader or comment_leader == "" then
+-- 		comment_leader = "# " -- fallback if unknown
+-- 	end
+--
+-- 	-- Comment the current line and move to a new one
+-- 	vim.cmd("s/^/" .. vim.fn.escape(comment_leader, "/\\") .. "/")
+-- 	vim.cmd("normal! o")
+-- end, { noremap = true, silent = true, desc = "Comment current line and open new line" })
 
 -- Map Ctrl+S to exit insert mode and save
 vim.keymap.set("i", "<C-s>", "<Esc>:w<CR>", { noremap = true, silent = true, desc = "Exit insert mode and save" })
@@ -52,10 +75,14 @@ vim.keymap.set("v", "<Tab>", ">gv", { noremap = true, silent = true })
 vim.keymap.set("v", "<S-Tab>", "<gv", { noremap = true, silent = true })
 vim.keymap.set("i", "<S-Tab>", "<C-d>", { noremap = true })
 
--- Increment with <leader>a
--- Decrement with <leader>x (since d is commonly used for delete)
--- vim.keymap.set(n', '<leader>a', '<C-a>', { noremap = true, desc = 'Increment number' })
--- vim.keymap.set('n', '<leader>x', '<C-x>', { noremap = true, desc = 'Decrement number' })
+-- Yank entire buffer to clipboard without losing place
+vim.keymap.set("n", "<leader>a", function()
+	local save = vim.fn.winsaveview()
+	local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+	vim.fn.setreg("+", table.concat(lines, "\n"))
+	vim.fn.winrestview(save)
+	vim.notify("Yanked " .. #lines .. " lines to clipboard")
+end, { noremap = true, desc = "Yank entire buffer to clipboard" })
 
 -- enter
 -- In visual mode: create line breaks at selection boundaries
@@ -116,16 +143,6 @@ vim.api.nvim_set_keymap("n", "<C-l>", ":noh<CR>", { noremap = true, silent = tru
 -- Switch : and ; (swap their functionality)
 vim.keymap.set("n", ";", ":", { noremap = true })
 vim.keymap.set("n", ":", ";", { noremap = true })
-
--- Duplicate current line and comment the original
-vim.keymap.set("n", "<leader>d", function()
-	local line_num = vim.api.nvim_win_get_cursor(0)[1]
-	local line_content = vim.api.nvim_get_current_line()
-	vim.api.nvim_buf_set_lines(0, line_num, line_num, false, { line_content })
-	vim.api.nvim_win_set_cursor(0, { line_num, 0 })
-	vim.cmd("normal gcc")
-	vim.api.nvim_win_set_cursor(0, { line_num + 1, 0 })
-end, { desc = "Duplicate line and comment original" })
 
 -- Traditional Cut Behavior (like Notepad++)
 -- Normal mode: Ctrl+X cuts the current line
@@ -258,7 +275,7 @@ local function replace_quoted_with_clipboard()
 
 				-- Replace selection with processed clipboard content
 				vim.cmd('normal! "_c')
-				vim.api.nvim_put({content_to_paste}, "c", true, true)
+				vim.api.nvim_put({ content_to_paste }, "c", true, true)
 				return
 			end
 		end

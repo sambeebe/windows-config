@@ -1,7 +1,12 @@
+
 vim.g.mapleader = " "
 
 vim.g.maplocalleader = " "
 vim.g.have_nerd_font = false
+
+-- Feature toggles (all disabled by default)
+vim.g.lsp_enabled = false
+vim.g.format_on_save_enabled = false
 
 -- Use system clipboard as default register
 vim.opt.clipboard = "unnamedplus"
@@ -68,7 +73,7 @@ vim.cmd([[
   " Snippets
   Plug 'L3MON4D3/LuaSnip', { 'tag': 'v2.*', 'do': 'make install_jsregexp' }
 
-  " Formatting
+  "  Formatting
   Plug 'stevearc/conform.nvim'
 
   " UI and colorscheme
@@ -219,8 +224,8 @@ require("lazydev").setup({
 	},
 })
 
--- Mason setup
-require("mason").setup()
+-- Mason setup (disabled by default - uncomment to enable)
+-- require("mason").setup()
 
 -- Fidget setup
 require("fidget").setup()
@@ -304,6 +309,9 @@ vim.diagnostic.config({
 	},
 })
 
+-- Disable diagnostics by default (since LSP starts disabled)
+-- vim.diagnostic.disable()
+
 -- Blink.cmp setup
 -- local capabilities = require("blink.cmp").get_lsp_capabilities()
 --
@@ -349,24 +357,38 @@ vim.list_extend(ensure_installed, {
 	"stylua", -- Used to format Lua code
 })
 
-require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
+-- Mason tool installer (disabled by default - uncomment to enable)
+-- require("mason-tool-installer").setup({ ensure_installed = ensure_installed })
 
-require("mason-lspconfig").setup({
-	ensure_installed = {},
-	automatic_installation = false,
-	handlers = {
-		function(server_name)
-			local server = servers[server_name] or {}
-			server.capabilities = vim.tbl_deep_extend("force", {}, capabilities, server.capabilities or {})
-			require("lspconfig")[server_name].setup(server)
-		end,
-	},
-})
+-- Store server configs but don't start them yet
+local server_configs = {}
+
+-- Mason LSP config (disabled by default - uncomment to enable)
+-- require("mason-lspconfig").setup({
+-- 	ensure_installed = {},
+-- 	automatic_installation = false,
+-- 	handlers = {
+-- 		function(server_name)
+-- 			local server = servers[server_name] or {}
+-- 			server.capabilities = vim.tbl_deep_extend("force", {}, server.capabilities or {})
+-- 			-- Store config but only start server if LSP is enabled
+-- 			server_configs[server_name] = server
+-- 			if vim.g.lsp_enabled then
+-- 				require("lspconfig")[server_name].setup(server)
+-- 			end
+-- 		end,
+-- 	},
+-- })
 
 -- Conform setup
 require("conform").setup({
 	notify_on_error = false,
 	format_on_save = function(bufnr)
+		-- Only format on save if enabled
+		if not vim.g.format_on_save_enabled then
+			return nil
+		end
+
 		local disable_filetypes = { c = true, cpp = true }
 		if disable_filetypes[vim.bo[bufnr].filetype] then
 			return nil
@@ -387,49 +409,13 @@ vim.keymap.set("", "<leader>f", function()
 	require("conform").format({ async = true, lsp_format = "fallback" })
 end, { desc = "[F]ormat buffer" })
 
-require("eldritch").setup({
-	-- your configuration comes here
-	-- or leave it empty to use the default settings
-	-- palette = "default", -- This option is deprecated. Use `vim.cmd[[colorscheme eldritch-dark]]` instead.
-	transparent = false, -- Enable this to disable setting the background color
-	terminal_colors = true, -- Configure the colors used when opening a `:terminal` in [Neovim](https://github.com/neovim/neovim)
+-- Tokyonight setup
+require("tokyonight").setup({
 	styles = {
-		-- Style to be applied to different syntax groups
-		-- Value is any valid attr-list value for `:help nvim_set_hl`
 		comments = { italic = false },
-		keywords = { italic = false },
-		functions = {},
-		variables = {},
-		-- Background styles. Can be "dark", "transparent" or "normal"
-		sidebars = "dark", -- style for sidebars, see below
-		floats = "dark", -- style for floating windows
 	},
-	sidebars = { "qf", "help" }, -- Set a darker background on sidebar-like windows. For example: `["qf", "vista_kind", "terminal", "packer"]`
-	hide_inactive_statusline = false, -- Enabling this option, will hide inactive statuslines and replace them with a thin border instead. Should work with the standard **StatusLine** and **LuaLine**.
-	dim_inactive = false, -- dims inactive windows, transparent must be false for this to work
-	lualine_bold = true, -- When `true`, section headers in the lualine theme will be bold
-
-	--- You can override specific color groups to use other groups or a hex color
-	--- function will be called with a ColorScheme table
-	---@param colors ColorScheme
-	on_colors = function(colors) end,
-
-	--- You can override specific highlights to use other groups or a hex color
-	--- function will be called with a Highlights and ColorScheme table
-	---@param highlights Highlights
-	---@param colors ColorScheme
-	on_highlights = function(highlights, colors) end,
 })
-
-vim.cmd.colorscheme("eldritch")
-
--- -- Tokyonight setup
--- require("tokyonight").setup({
--- 	styles = {
--- 		comments = { italic = false },
--- 	},
--- })
--- vim.cmd.colorscheme("tokyonight-night")
+vim.cmd.colorscheme("tokyonight-night")
 --
 -- -- Subtle mode-based background color changes
 -- local function update_bg_for_mode()
@@ -553,7 +539,7 @@ require("nvim-treesitter.configs").setup({
 		"vim",
 		"vimdoc",
 	},
-	auto_install = true,
+	auto_install = false,
 	highlight = {
 		enable = true,
 		additional_vim_regex_highlighting = { "ruby" },
@@ -687,6 +673,65 @@ vim.api.nvim_create_user_command("T", function()
 		print("Switched to relative line numbers")
 	end
 end, {})
+
+-- LSP Toggle Function
+function ToggleLSP()
+	vim.g.lsp_enabled = not vim.g.lsp_enabled
+
+	if vim.g.lsp_enabled then
+		-- Enable LSP
+		print("Starting LSP servers...")
+
+		-- Start LSP servers for all open buffers
+		for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+			if vim.api.nvim_buf_is_loaded(buf) then
+				local ft = vim.api.nvim_buf_get_option(buf, "filetype")
+				if ft == "lua" then
+					-- Start lua_ls for Lua files
+					local server = server_configs["lua_ls"]
+					if server then
+						require("lspconfig").lua_ls.setup(server)
+					end
+				end
+				-- Add more filetypes as needed
+			end
+		end
+
+		-- Enable diagnostics
+		vim.diagnostic.enable()
+
+		vim.notify("LSP enabled! Language servers started.", vim.log.levels.INFO)
+	else
+		-- Disable LSP
+		-- Stop all LSP clients
+		local clients = vim.lsp.get_clients()
+		for _, client in ipairs(clients) do
+			vim.lsp.stop_client(client.id)
+		end
+
+		-- Disable diagnostics
+		vim.diagnostic.disable()
+
+		vim.notify("LSP disabled! All language servers stopped.", vim.log.levels.INFO)
+	end
+end
+
+-- Keymap to toggle LSP
+vim.keymap.set("n", "<leader>tl", ToggleLSP, { desc = "[T]oggle [L]SP" })
+
+-- Format on Save Toggle Function
+function ToggleFormatOnSave()
+	vim.g.format_on_save_enabled = not vim.g.format_on_save_enabled
+
+	if vim.g.format_on_save_enabled then
+		vim.notify("Format on save enabled!", vim.log.levels.INFO)
+	else
+		vim.notify("Format on save disabled!", vim.log.levels.INFO)
+	end
+end
+
+-- Keymap to toggle format on save
+vim.keymap.set("n", "<leader>tf", ToggleFormatOnSave, { desc = "[T]oggle [F]ormat on save" })
 
 -- Load custom keymaps
 require("keymaps")
