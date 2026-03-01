@@ -14,7 +14,7 @@ $ConfigRoot = $PSScriptRoot
 
 # 1. Copy PowerShell profile to pwsh directory
 Write-Host "`n--- Copying PowerShell Profile to pwsh directory ---" -ForegroundColor Yellow
-$ProfileSource = "C:\Users\samue\OneDrive\Documents\PowerShell\Microsoft.PowerShell_profile.ps1"
+$ProfileSource = "C:\Users\samue\Documents_LOCAL\PowerShell\Microsoft.PowerShell_profile.ps1"
 $PwshDir = Join-Path $ConfigRoot "pwsh"
 $ProfileTarget = Join-Path $PwshDir "Microsoft.PowerShell_profile.ps1"
 
