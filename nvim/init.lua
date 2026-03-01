@@ -1,4 +1,3 @@
-
 vim.g.mapleader = " "
 
 vim.g.maplocalleader = " "
@@ -73,7 +72,7 @@ vim.cmd([[
   " Snippets
   Plug 'L3MON4D3/LuaSnip', { 'tag': 'v2.*', 'do': 'make install_jsregexp' }
 
-  "  Formatting
+  " Formatting
   Plug 'stevearc/conform.nvim'
 
   " UI and colorscheme
