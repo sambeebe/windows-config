@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "RTTkcFqf+A5OhfzmdUl36EH8OOsVBVKczL0cNsWjiZo9WoZRRHKBYElBmQWk/468wijLNcHEoxJ+62IXXwKplA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\samue\\windows-config\\explorer\\unzipper\\unzip.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\samue\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.1\\microsoft.net.illink.tasks.8.0.1.nupkg.sha512"
+  ],
+  "logs": []
+}

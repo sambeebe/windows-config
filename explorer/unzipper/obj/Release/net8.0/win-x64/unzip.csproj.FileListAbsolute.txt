@@ -1,0 +1,15 @@
+C:\Users\samue\windows-config\explorer\unzipper\bin\Release\net8.0\win-x64\unzip.exe
+C:\Users\samue\windows-config\explorer\unzipper\bin\Release\net8.0\win-x64\unzip.deps.json
+C:\Users\samue\windows-config\explorer\unzipper\bin\Release\net8.0\win-x64\unzip.runtimeconfig.json
+C:\Users\samue\windows-config\explorer\unzipper\bin\Release\net8.0\win-x64\unzip.dll
+C:\Users\samue\windows-config\explorer\unzipper\bin\Release\net8.0\win-x64\unzip.pdb
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.AssemblyInfoInputs.cache
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.AssemblyInfo.cs
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.csproj.CoreCompileInputs.cache
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.sourcelink.json
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.dll
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\refint\unzip.dll
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.pdb
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\unzip.genruntimeconfig.cache
+C:\Users\samue\windows-config\explorer\unzipper\obj\Release\net8.0\win-x64\ref\unzip.dll
