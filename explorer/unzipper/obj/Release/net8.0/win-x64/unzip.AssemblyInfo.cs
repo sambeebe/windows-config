@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("unzip")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+633c44adfd7d26f3c26b1a88aa35a5ae0372f4d0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+15f956ef79ea55230dccb47958c33b39b56bfae6")]
 [assembly: System.Reflection.AssemblyProductAttribute("unzip")]
 [assembly: System.Reflection.AssemblyTitleAttribute("unzip")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

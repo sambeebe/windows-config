@@ -7,40 +7,31 @@ class Program
     static int Main(string[] args)
     {
         if (args.Length < 1)
-        {
-            Console.Error.WriteLine("Usage: unzip.exe <file.zip>");
             return 1;
-        }
 
-        string zipPath = args[0];
-
-        if (!File.Exists(zipPath))
+        int exitCode = 0;
+        foreach (string arg in args)
         {
-            Console.Error.WriteLine($"File not found: {zipPath}");
-            return 1;
+            if (!File.Exists(arg) || !arg.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                exitCode = 1;
+                continue;
+            }
+
+            string fullPath = Path.GetFullPath(arg);
+            string destDir = Path.Combine(Path.GetDirectoryName(fullPath)!, Path.GetFileNameWithoutExtension(fullPath));
+
+            try
+            {
+                ZipFile.ExtractToDirectory(fullPath, destDir, overwriteFiles: true);
+                File.Delete(fullPath);
+            }
+            catch
+            {
+                exitCode = 1;
+            }
         }
 
-        if (!zipPath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.Error.WriteLine("File is not a .zip archive.");
-            return 1;
-        }
-
-        string fullPath = Path.GetFullPath(zipPath);
-        string parentDir = Path.GetDirectoryName(fullPath)!;
-        string folderName = Path.GetFileNameWithoutExtension(fullPath);
-        string destDir = Path.Combine(parentDir, folderName);
-
-        try
-        {
-            ZipFile.ExtractToDirectory(fullPath, destDir, overwriteFiles: true);
-            File.Delete(fullPath);
-            return 0;
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            return 1;
-        }
+        return exitCode;
     }
 }

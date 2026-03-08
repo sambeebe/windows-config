@@ -20,17 +20,22 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Register per-user cascading menu (no admin needed)
-:: Structure: .zip -> Unzipper (submenu) -> Unzip Here
-set "PARENT=HKCU\Software\Classes\SystemFileAssociations\.zip\shell\Unzipper"
-set "CHILD=%PARENT%\shell\UnzipHere"
+:: Register per-user shell extension (no admin needed)
+set "REG_KEY=HKCU\Software\Classes\SystemFileAssociations\.zip\shell\UnzipHere"
 
-reg add "%PARENT%"             /v "MUIVerb"      /t REG_SZ /d "Unzipper"           /f >nul
-reg add "%PARENT%"             /v "Icon"         /t REG_SZ /d "shell32.dll,-1614"  /f >nul
-reg add "%PARENT%"             /v "SubCommands"  /t REG_SZ /d ""                   /f >nul
-reg add "%CHILD%"              /v ""             /t REG_SZ /d "Unzip Here"         /f >nul
-reg add "%CHILD%\command"      /v ""             /t REG_SZ /d "\"%EXE%\" \"%%1\""  /f >nul
+reg add "%REG_KEY%"            /v ""     /t REG_SZ /d "Unzip"              /f >nul
+reg add "%REG_KEY%"            /v "Icon" /t REG_SZ /d "shell32.dll,-1614"  /f >nul
+reg add "%REG_KEY%\command"    /v ""     /t REG_SZ /d "\"%EXE%\" \"%%1\""  /f >nul
+
+:: -- Cascading menu alternative (Unzipper -> Unzip Here) --
+:: set "PARENT=HKCU\Software\Classes\SystemFileAssociations\.zip\shell\Unzipper"
+:: set "CHILD=%PARENT%\shell\UnzipHere"
+:: reg add "%PARENT%"          /v "MUIVerb"      /t REG_SZ /d "Unzipper"          /f >nul
+:: reg add "%PARENT%"          /v "Icon"         /t REG_SZ /d "shell32.dll,-1614" /f >nul
+:: reg add "%PARENT%"          /v "SubCommands"  /t REG_SZ /d ""                  /f >nul
+:: reg add "%CHILD%"           /v ""             /t REG_SZ /d "Unzip Here"        /f >nul
+:: reg add "%CHILD%\command"   /v ""             /t REG_SZ /d "\"%EXE%\" \"%%1\"" /f >nul
 
 echo.
-echo Done! Right-click any .zip file and choose "Unzipper" > "Unzip Here".
+echo Done! Right-click any .zip file and choose "Unzip".
 pause
