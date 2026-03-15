@@ -1,3 +1,106 @@
+function Invoke-TabCycle {
+    param([int]$Direction)
+
+    $line = $null
+    $cursor = $null
+    [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line,[ref]$cursor)
+
+    # Determine base path from command line
+    if ([string]::IsNullOrWhiteSpace($line)) {
+        $base = ".\"
+    }
+    elseif ($line -match '^\.\\(.*\\)?') {
+        $base = ".\" + $Matches[1]
+    }
+    else {
+        if ($Direction -gt 0) {
+            [Microsoft.PowerShell.PSConsoleReadLine]::TabCompleteNext()
+        } else {
+            [Microsoft.PowerShell.PSConsoleReadLine]::TabCompletePrevious()
+        }
+        return
+    }
+
+    $resolved = Resolve-Path $base -ErrorAction SilentlyContinue
+    if (-not $resolved) { return }
+
+    $dir = $resolved.Path
+
+    # Refresh candidate list when directory changes
+    if (
+        -not $script:__cycleList -or
+        $script:__cycleDir -ne $dir
+    ) {
+
+        $script:__cycleDir = $dir
+
+        $script:__cycleList =
+            Get-ChildItem $dir |
+            Sort-Object @{Expression={$_.PSIsContainer};Descending=$true}, Name
+
+        $script:__cycleIndex = -1
+    }
+
+    $count = $script:__cycleList.Count
+    if ($count -eq 0) { return }
+
+    $script:__cycleIndex = ($script:__cycleIndex + $Direction) % $count
+    if ($script:__cycleIndex -lt 0) { $script:__cycleIndex += $count }
+
+    $item = $script:__cycleList[$script:__cycleIndex]
+
+    $replacement = Join-Path $base $item.Name
+
+    [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
+        0,
+        $line.Length,
+        $replacement
+    )
+}
+
+# Tab → forward
+Set-PSReadLineKeyHandler -Key Tab -ScriptBlock {
+    Invoke-TabCycle 1
+}
+
+# Shift+Tab → backward
+Set-PSReadLineKeyHandler -Key Shift+Tab -ScriptBlock {
+    Invoke-TabCycle -1
+}
+
+# Right arrow → expand folder
+Set-PSReadLineKeyHandler -Key RightArrow -ScriptBlock {
+
+    $line = $null
+    $cursor = $null
+    [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$line,[ref]$cursor)
+
+    if ($line -like ".\*" -and (Test-Path $line -PathType Container)) {
+
+        if (-not $line.EndsWith("\")) {
+            [Microsoft.PowerShell.PSConsoleReadLine]::Insert("\")
+        }
+
+        $script:__cycleList = $null
+        return
+    }
+
+    [Microsoft.PowerShell.PSConsoleReadLine]::ForwardChar()
+}
+
+# Reset state when a command runs
+Set-PSReadLineOption -AddToHistoryHandler {
+    $script:__cycleList = $null
+    return $true
+}
+
+function y($in){
+    yt-dlp $in
+}
+function resume {
+    cd C:\Users\samue\dev\resume
+    nvim Sam_Beebe_Resume.md
+}
 function notes {
     cd C:\Users\samue\notes
     nvim notes.txt
@@ -220,6 +323,17 @@ function e() {
         } | Select-Object -First 1
     }
 }
+function gs { git status }
+function gap {
+    param([Parameter(ValueFromRemainingArguments=$true)][string[]]$msg)
+    $m = $msg -join ' '
+    git add . && git commit -m "$m" && git push
+}
+function ggx {
+    param([int]$n = 10)
+    git log --oneline --graph --decorate -n $n
+}
+
 function n($in) { nvim $in }
 function nvcon() {
     cd "C:\Users\samue\AppData\Local\nvim"
