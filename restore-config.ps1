@@ -77,7 +77,7 @@ if ($All) {
 if ($DoProfile) {
     Write-Host "`n--- Restoring PowerShell Profile ---" -ForegroundColor Yellow
     $ProfileSource = Join-Path $ConfigRoot "pwsh\Microsoft.PowerShell_profile.ps1"
-    $ProfileTarget = "C:\Users\samue\Documents_LOCAL\PowerShell\Microsoft.PowerShell_profile.ps1"
+    $ProfileTarget = "$env:USERPROFILE\Documents_LOCAL\PowerShell\Microsoft.PowerShell_profile.ps1"
     $ProfileTargetDir = Split-Path $ProfileTarget -Parent
 
     if (!(Test-Path $ProfileTargetDir)) {
@@ -140,7 +140,7 @@ if ($DoNvim) {
 if ($DoWinTerm) {
     Write-Host "`n--- Restoring Windows Terminal Settings ---" -ForegroundColor Yellow
     $WinTermSource = Join-Path $ConfigRoot "winterm\settings.json"
-    $WinTermTarget = "C:\Users\samue\AppData\Local\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
+    $WinTermTarget = "$env:LOCALAPPDATA\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json"
     $WinTermTargetDir = Split-Path $WinTermTarget -Parent
 
     Write-Host "Restoring Windows Terminal settings from: $WinTermSource" -ForegroundColor Cyan
