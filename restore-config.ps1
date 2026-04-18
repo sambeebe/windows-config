@@ -20,27 +20,30 @@ param(
     [switch]$Profile,
     [switch]$Nvim,
     [switch]$WinTerm,
-    [switch]$Ahk
+    [switch]$Ahk,
+    [switch]$Fonts
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
 $ConfigRoot = $PSScriptRoot
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Fonts
 if ($All) {
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoFonts = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
     $DoWinTerm = [bool]$WinTerm
     $DoAhk = [bool]$Ahk
+    $DoFonts = [bool]$Fonts
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
     Write-Host "  2) Neovim config"
     Write-Host "  3) Windows Terminal settings"
     Write-Host "  4) AutoHotkey scripts"
+    Write-Host "  5) Fonts (0xProto Nerd Font)"
     Write-Host "  A) All"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -51,9 +54,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoFonts = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoFonts = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -62,12 +65,13 @@ if ($All) {
                 '2' { $DoNvim = $true }
                 '3' { $DoWinTerm = $true }
                 '4' { $DoAhk = $true }
+                '5' { $DoFonts = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoFonts)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -193,6 +197,47 @@ if ($DoAhk) {
         }
     } else {
         Write-Host "Warning: ahk directory not found at $AhkSourceDir" -ForegroundColor Red
+    }
+}
+
+# 5. Install 0xProto Nerd Font
+if ($DoFonts) {
+    Write-Host "`n--- Installing 0xProto Nerd Font ---" -ForegroundColor Yellow
+    $FontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
+    $RegPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+
+    $AlreadyInstalled = Get-ChildItem $FontDir -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -like "0xProtoNerdFont*" }
+
+    if ($AlreadyInstalled) {
+        Write-Host "0xProto Nerd Font already installed." -ForegroundColor Green
+    } else {
+        $Url     = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/0xProto.zip"
+        $TmpZip  = Join-Path $env:TEMP "0xProto.zip"
+        $TmpDir  = Join-Path $env:TEMP "0xProto"
+
+        Write-Host "Downloading from: $Url" -ForegroundColor Cyan
+        try {
+            Invoke-WebRequest $Url -OutFile $TmpZip -UseBasicParsing
+            Expand-Archive $TmpZip -DestinationPath $TmpDir -Force
+
+            if (!(Test-Path $FontDir)) { New-Item -ItemType Directory -Path $FontDir -Force | Out-Null }
+
+            $Installed = 0
+            Get-ChildItem "$TmpDir\*.ttf" | ForEach-Object {
+                $Dest = Join-Path $FontDir $_.Name
+                Copy-Item $_.FullName $Dest -Force
+                $RegName = $_.BaseName + " (TrueType)"
+                Set-ItemProperty -Path $RegPath -Name $RegName -Value $Dest -Type String -Force
+                $Installed++
+            }
+
+            Write-Host "Installed $Installed font files." -ForegroundColor Green
+        } catch {
+            Write-Host "Error installing fonts: $($_.Exception.Message)" -ForegroundColor Red
+        } finally {
+            Remove-Item $TmpZip, $TmpDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 
