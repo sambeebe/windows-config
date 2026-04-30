@@ -10,7 +10,7 @@
     "keybindings": 
     [
         {
-            "id": null,
+            "id": "Terminal.DuplicateTab",
             "keys": "ctrl+shift+d"
         },
         {
