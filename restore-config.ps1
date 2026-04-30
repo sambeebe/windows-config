@@ -200,28 +200,37 @@ if ($DoAhk) {
     }
 }
 
-# 5. Install 0xProto Nerd Font
+# 5. Install Nerd Fonts
 if ($DoFonts) {
-    Write-Host "`n--- Installing 0xProto Nerd Font ---" -ForegroundColor Yellow
+    Write-Host "`n--- Installing Nerd Fonts ---" -ForegroundColor Yellow
     $FontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $RegPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
-    $AlreadyInstalled = Get-ChildItem $FontDir -ErrorAction SilentlyContinue |
-        Where-Object { $_.Name -like "0xProtoNerdFont*" }
+    $Fonts = @(
+        @{ Name = "CaskaydiaMono Nerd Font"; ZipName = "CascadiaMono"; InstalledPattern = "CaskaydiaMono*" }
+    )
 
-    if ($AlreadyInstalled) {
-        Write-Host "0xProto Nerd Font already installed." -ForegroundColor Green
-    } else {
-        $Url     = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/0xProto.zip"
-        $TmpZip  = Join-Path $env:TEMP "0xProto.zip"
-        $TmpDir  = Join-Path $env:TEMP "0xProto"
+    if (!(Test-Path $FontDir)) { New-Item -ItemType Directory -Path $FontDir -Force | Out-Null }
 
-        Write-Host "Downloading from: $Url" -ForegroundColor Cyan
+    foreach ($Font in $Fonts) {
+        Write-Host "`n  $($Font.Name)" -ForegroundColor Yellow
+
+        $AlreadyInstalled = Get-ChildItem $FontDir -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like $Font.InstalledPattern }
+
+        if ($AlreadyInstalled) {
+            Write-Host "  Already installed." -ForegroundColor Green
+            continue
+        }
+
+        $Url    = "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$($Font.ZipName).zip"
+        $TmpZip = Join-Path $env:TEMP "$($Font.ZipName).zip"
+        $TmpDir = Join-Path $env:TEMP $Font.ZipName
+
+        Write-Host "  Downloading from: $Url" -ForegroundColor Cyan
         try {
             Invoke-WebRequest $Url -OutFile $TmpZip -UseBasicParsing
             Expand-Archive $TmpZip -DestinationPath $TmpDir -Force
-
-            if (!(Test-Path $FontDir)) { New-Item -ItemType Directory -Path $FontDir -Force | Out-Null }
 
             $Installed = 0
             Get-ChildItem "$TmpDir\*.ttf" | ForEach-Object {
@@ -232,9 +241,9 @@ if ($DoFonts) {
                 $Installed++
             }
 
-            Write-Host "Installed $Installed font files." -ForegroundColor Green
+            Write-Host "  Installed $Installed font files." -ForegroundColor Green
         } catch {
-            Write-Host "Error installing fonts: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "  Error installing $($Font.Name): $($_.Exception.Message)" -ForegroundColor Red
         } finally {
             Remove-Item $TmpZip, $TmpDir -Recurse -Force -ErrorAction SilentlyContinue
         }
