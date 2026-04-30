@@ -338,6 +338,58 @@ function ggx {
     git log --oneline --graph --decorate -n $n
 }
 
+function uz {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true, Position=0)]
+        [string]$Path,
+        [switch]$Delete,
+        [switch]$Keep
+    )
+
+    $zip = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $zip) {
+        Write-Host "File not found: $Path" -ForegroundColor Red
+        return
+    }
+    if ([System.IO.Path]::GetExtension($zip.Path) -ne '.zip') {
+        Write-Host "Not a .zip file: $($zip.Path)" -ForegroundColor Red
+        return
+    }
+
+    $parent = Split-Path $zip.Path -Parent
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($zip.Path)
+    $dest = Join-Path $parent $base
+
+    if (Test-Path $dest) {
+        Write-Host "Destination already exists: $dest" -ForegroundColor Red
+        return
+    }
+
+    try {
+        Expand-Archive -LiteralPath $zip.Path -DestinationPath $dest -Force
+        Write-Host "Extracted to: $dest" -ForegroundColor Green
+    } catch {
+        Write-Host "Extraction failed: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    if ($Keep) { return }
+
+    if ($Delete) {
+        Remove-Item -LiteralPath $zip.Path -Force
+        Write-Host "Deleted: $($zip.Path)" -ForegroundColor Yellow
+        return
+    }
+
+    $archive = Join-Path $parent "zip_archive"
+    if (!(Test-Path $archive)) {
+        New-Item -ItemType Directory -Path $archive -Force | Out-Null
+    }
+    Move-Item -LiteralPath $zip.Path -Destination $archive -Force
+    Write-Host "Archived to: $archive" -ForegroundColor Cyan
+}
+
 function n($in) { nvim $in }
 function nvcon() {
     cd "C:\Users\samue\AppData\Local\nvim"
