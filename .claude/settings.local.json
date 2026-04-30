@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"C:\\\\Users\\\\samue\\\\windows-config\\\\restore-config.ps1\" -Fonts)"
+    ]
+  }
+}

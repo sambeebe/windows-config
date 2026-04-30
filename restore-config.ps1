@@ -43,7 +43,7 @@ if ($All) {
     Write-Host "  2) Neovim config"
     Write-Host "  3) Windows Terminal settings"
     Write-Host "  4) AutoHotkey scripts"
-    Write-Host "  5) Fonts (0xProto Nerd Font)"
+    Write-Host "  5) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  A) All"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -206,13 +206,13 @@ if ($DoFonts) {
     $FontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $RegPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
 
-    $Fonts = @(
+    $FontList = @(
         @{ Name = "CaskaydiaMono Nerd Font"; ZipName = "CascadiaMono"; InstalledPattern = "CaskaydiaMono*" }
     )
 
     if (!(Test-Path $FontDir)) { New-Item -ItemType Directory -Path $FontDir -Force | Out-Null }
 
-    foreach ($Font in $Fonts) {
+    foreach ($Font in $FontList) {
         Write-Host "`n  $($Font.Name)" -ForegroundColor Yellow
 
         $AlreadyInstalled = Get-ChildItem $FontDir -ErrorAction SilentlyContinue |
