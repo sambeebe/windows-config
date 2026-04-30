@@ -89,6 +89,9 @@ vim.cmd([[
   Plug 'nvim-lua/plenary.nvim'
   Plug 'https://github.com/eldritch-theme/eldritch.nvim'
   Plug 'greggh/claude-code.nvim'
+
+  " Diff viewers
+  Plug 'sindrets/diffview.nvim'
   call plug#end()
 ]])
 
@@ -146,6 +149,7 @@ require("which-key").setup({
 		{ "<leader>s", group = "[S]earch" },
 		{ "<leader>t", group = "[T]oggle" },
 		{ "<leader>h", group = "Git [H]unk", mode = { "n", "v" } },
+		{ "<leader>d", group = "[D]iff" },
 	},
 })
 
@@ -731,6 +735,85 @@ end
 
 -- Keymap to toggle format on save
 vim.keymap.set("n", "<leader>tf", ToggleFormatOnSave, { desc = "[T]oggle [F]ormat on save" })
+
+-- ============================================================
+-- DIFF VIEWERS
+-- ============================================================
+-- Three options, all preserve syntax highlighting:
+--   1. diffview.nvim   -> full-tab side-by-side (best for reviewing)
+--   2. mini.diff       -> inline overlay against git index
+--   3. :DiffSplit      -> built-in vim diff against any file
+--
+-- Toggle / open with <leader>d* (see keymaps below)
+-- ============================================================
+
+-- Diffview.nvim (side-by-side, treesitter highlighted)
+local ok_dv, diffview = pcall(require, "diffview")
+if ok_dv then
+	diffview.setup({
+		enhanced_diff_hl = true, -- better intra-line hl
+		view = {
+			default = { layout = "diff2_horizontal" },
+			merge_tool = { layout = "diff3_horizontal" },
+		},
+	})
+end
+
+-- mini.diff (inline overlay)
+require("mini.diff").setup({
+	view = {
+		style = "sign",
+		signs = { add = "▎", change = "▎", delete = "" },
+	},
+})
+
+-- Toggle helpers
+local diffview_open = false
+local function toggle_diffview()
+	if diffview_open then
+		vim.cmd("DiffviewClose")
+		diffview_open = false
+	else
+		vim.cmd("DiffviewOpen")
+		diffview_open = true
+	end
+end
+
+-- Keymaps
+vim.keymap.set("n", "<leader>dd", toggle_diffview, { desc = "[D]iff toggle [D]iffview (HEAD)" })
+vim.keymap.set("n", "<leader>dh", "<cmd>DiffviewFileHistory %<CR>", { desc = "[D]iff [H]istory of current file" })
+vim.keymap.set("n", "<leader>dH", "<cmd>DiffviewFileHistory<CR>", { desc = "[D]iff [H]istory of repo" })
+vim.keymap.set("n", "<leader>do", function()
+	vim.ui.input({ prompt = "Diff against (ref/branch/commit): ", default = "HEAD~1" }, function(ref)
+		if ref and ref ~= "" then
+			vim.cmd("DiffviewOpen " .. ref)
+			diffview_open = true
+		end
+	end)
+end, { desc = "[D]iff [O]pen vs ref" })
+
+vim.keymap.set("n", "<leader>di", function()
+	require("mini.diff").toggle_overlay(0)
+end, { desc = "[D]iff [I]nline overlay (mini.diff)" })
+
+vim.keymap.set("n", "<leader>dt", function()
+	if vim.wo.diff then
+		vim.cmd("diffoff")
+	else
+		vim.cmd("diffthis")
+	end
+end, { desc = "[D]iff [T]his window (built-in)" })
+
+vim.keymap.set("n", "<leader>ds", function()
+	vim.ui.input({ prompt = "Diff split with file: ", completion = "file" }, function(path)
+		if path and path ~= "" then
+			vim.cmd("vert diffsplit " .. vim.fn.fnameescape(path))
+		end
+	end)
+end, { desc = "[D]iff [S]plit with file" })
+
+-- Make built-in diff readable & keep syntax highlighting
+vim.opt.diffopt:append({ "linematch:60", "algorithm:histogram", "indent-heuristic" })
 
 -- Load custom keymaps
 require("keymaps")
