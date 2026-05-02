@@ -8,11 +8,12 @@
 
     By default shows an interactive menu to pick which sections to restore. Use -All to
     restore everything non-interactively, or pass any combination of -Profile, -Nvim,
-    -WinTerm, -Ahk to restore specific sections.
+    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs to restore specific sections.
 .EXAMPLE
     .\restore-config.ps1
     .\restore-config.ps1 -All
     .\restore-config.ps1 -Profile -Ahk
+    .\restore-config.ps1 -Installs
 #>
 [CmdletBinding()]
 param(
@@ -21,21 +22,66 @@ param(
     [switch]$Nvim,
     [switch]$WinTerm,
     [switch]$Ahk,
+    [switch]$Mpv,
+    [switch]$PowerToys,
+    [switch]$Installs,
     [switch]$Fonts
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
 $ConfigRoot = $PSScriptRoot
 
+function Install-WingetPackageIfMissing {
+    param(
+        [Parameter(Mandatory=$true)][string[]]$CommandNames,
+        [Parameter(Mandatory=$true)][string]$PackageId,
+        [Parameter(Mandatory=$true)][string]$DisplayName
+    )
+
+    $IsInstalled = $false
+    foreach ($CommandName in $CommandNames) {
+        if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
+            $IsInstalled = $true
+            break
+        }
+    }
+
+    if ($IsInstalled) {
+        Write-Host "$DisplayName is already installed." -ForegroundColor Green
+        return
+    }
+
+    $Winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+    if (-not $Winget) {
+        Write-Host "winget is not available, so $DisplayName could not be installed automatically." -ForegroundColor Red
+        return
+    }
+
+    Write-Host "Installing $DisplayName..." -ForegroundColor Cyan
+    try {
+        & $Winget.Source install --id $PackageId --exact --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "$DisplayName installed successfully." -ForegroundColor Green
+        } else {
+            Write-Host "Failed to install $DisplayName (exit code $LASTEXITCODE)." -ForegroundColor Red
+        }
+    } catch {
+        Write-Host "Error installing ${DisplayName}: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Fonts
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts
 if ($All) {
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoFonts = $true
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
     $DoWinTerm = [bool]$WinTerm
     $DoAhk = [bool]$Ahk
+    $DoMpv = [bool]$Mpv
+    $DoPowerToys = [bool]$PowerToys
+    $DoInstalls = [bool]$Installs
     $DoFonts = [bool]$Fonts
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
@@ -43,7 +89,10 @@ if ($All) {
     Write-Host "  2) Neovim config"
     Write-Host "  3) Windows Terminal settings"
     Write-Host "  4) AutoHotkey scripts"
-    Write-Host "  5) Fonts (CaskaydiaMono Nerd Font)"
+    Write-Host "  5) mpv config"
+    Write-Host "  6) PowerToys settings"
+    Write-Host "  7) Installs (AutoHotkey, tre-command, PowerToys)"
+    Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  A) All"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -54,9 +103,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoFonts = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoFonts = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -65,13 +114,16 @@ if ($All) {
                 '2' { $DoNvim = $true }
                 '3' { $DoWinTerm = $true }
                 '4' { $DoAhk = $true }
-                '5' { $DoFonts = $true }
+                '5' { $DoMpv = $true }
+                '6' { $DoPowerToys = $true }
+                '7' { $DoInstalls = $true }
+                '8' { $DoFonts = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoFonts)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -170,28 +222,30 @@ if ($DoWinTerm) {
 if ($DoAhk) {
     Write-Host "`n--- Restoring AutoHotkey Scripts ---" -ForegroundColor Yellow
     $AhkSourceDir = Join-Path $ConfigRoot "ahk"
-    $AhkUserProfile = $env:USERPROFILE
-    $AhkDesktop = Join-Path $env:USERPROFILE "Desktop"
+    $AhkStartupDir = [Environment]::GetFolderPath('Startup')
 
     Write-Host "Restoring AutoHotkey scripts from: $AhkSourceDir" -ForegroundColor Cyan
+
+    $AhkInstalled = $null -ne (Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue) -or
+        $null -ne (Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue)
+
+    if (-not $AhkInstalled) {
+        Write-Host "AutoHotkey is not installed. Run restore-config.ps1 -Installs to install it." -ForegroundColor Yellow
+    }
 
     if (Test-Path $AhkSourceDir) {
         $AhkFiles = Get-ChildItem "$AhkSourceDir\*.ahk" -ErrorAction SilentlyContinue
         if ($AhkFiles.Count -gt 0) {
-            foreach ($File in $AhkFiles) {
-                # If file already exists on Desktop, update it there; otherwise place in USERPROFILE.
-                $DesktopPath = Join-Path $AhkDesktop $File.Name
-                $ProfilePath = Join-Path $AhkUserProfile $File.Name
-
-                if (Test-Path $DesktopPath) {
-                    Copy-Item $File.FullName $DesktopPath -Force
-                    Write-Host "Restored to Desktop: $($File.Name)" -ForegroundColor Green
-                } else {
-                    Copy-Item $File.FullName $ProfilePath -Force
-                    Write-Host "Restored to UserProfile: $($File.Name)" -ForegroundColor Green
-                }
+            if (!(Test-Path $AhkStartupDir)) {
+                New-Item -ItemType Directory -Path $AhkStartupDir -Force | Out-Null
             }
-            Write-Host "AutoHotkey scripts restored successfully!" -ForegroundColor Green
+
+            foreach ($File in $AhkFiles) {
+                $StartupPath = Join-Path $AhkStartupDir $File.Name
+                Copy-Item $File.FullName $StartupPath -Force
+                Write-Host "Restored to Startup: $($File.Name)" -ForegroundColor Green
+            }
+            Write-Host "AutoHotkey scripts restored successfully to: $AhkStartupDir" -ForegroundColor Green
         } else {
             Write-Host "No AutoHotkey scripts found in repo" -ForegroundColor Yellow
         }
@@ -200,7 +254,88 @@ if ($DoAhk) {
     }
 }
 
-# 5. Install Nerd Fonts
+# 5. Restore mpv config
+if ($DoMpv) {
+    Write-Host "`n--- Restoring mpv Config ---" -ForegroundColor Yellow
+    $MpvSourceDir = Join-Path $ConfigRoot "mpv"
+    $MpvTargetDir = "$env:APPDATA\mpv"
+
+    if (!(Test-Path $MpvTargetDir)) {
+        New-Item -ItemType Directory -Path $MpvTargetDir -Force | Out-Null
+    }
+
+    Write-Host "Restoring mpv config from: $MpvSourceDir" -ForegroundColor Cyan
+    Write-Host "Restoring to: $MpvTargetDir" -ForegroundColor Cyan
+
+    $ItemsToCopy = @(
+        "mpv.conf",
+        "scripts"
+    )
+
+    foreach ($Item in $ItemsToCopy) {
+        $SourcePath = Join-Path $MpvSourceDir $Item
+        $TargetPath = Join-Path $MpvTargetDir $Item
+
+        if (Test-Path $SourcePath) {
+            if (Test-Path $TargetPath) {
+                Write-Host "Updating existing: $Item" -ForegroundColor Yellow
+                Remove-Item $TargetPath -Recurse -Force
+            }
+
+            Write-Host "Copying: $Item" -ForegroundColor Green
+            Copy-Item $SourcePath $TargetPath -Recurse -Force
+        } else {
+            Write-Host "Warning: $Item not found in repo" -ForegroundColor Yellow
+        }
+    }
+}
+
+# 6. Restore PowerToys settings
+if ($DoPowerToys) {
+    Write-Host "`n--- Restoring PowerToys Settings ---" -ForegroundColor Yellow
+    $PowerToysSourceDir = Join-Path $ConfigRoot "powertoys"
+    $PowerToysTargetDir = "$env:LOCALAPPDATA\Microsoft\PowerToys"
+
+    if (!(Test-Path $PowerToysTargetDir)) {
+        New-Item -ItemType Directory -Path $PowerToysTargetDir -Force | Out-Null
+    }
+
+    Write-Host "Restoring PowerToys settings from: $PowerToysSourceDir" -ForegroundColor Cyan
+    Write-Host "Restoring to: $PowerToysTargetDir" -ForegroundColor Cyan
+
+    if (Test-Path $PowerToysSourceDir) {
+        $SettingsFiles = Get-ChildItem -LiteralPath $PowerToysSourceDir -Recurse -Filter settings.json -File -ErrorAction SilentlyContinue
+        if ($SettingsFiles) {
+            foreach ($File in $SettingsFiles) {
+                $RelativePath = $File.FullName.Substring($PowerToysSourceDir.Length).TrimStart('\')
+                $TargetPath = Join-Path $PowerToysTargetDir $RelativePath
+                $TargetParent = Split-Path $TargetPath -Parent
+
+                if (!(Test-Path $TargetParent)) {
+                    New-Item -ItemType Directory -Path $TargetParent -Force | Out-Null
+                }
+
+                Copy-Item $File.FullName $TargetPath -Force
+                Write-Host "Restored: $RelativePath" -ForegroundColor Green
+            }
+            Write-Host "PowerToys settings restored successfully!" -ForegroundColor Green
+        } else {
+            Write-Host "Warning: No PowerToys settings.json files found in repo at $PowerToysSourceDir" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Warning: PowerToys settings not found in repo at $PowerToysSourceDir" -ForegroundColor Yellow
+    }
+}
+
+# 7. Install packages
+if ($DoInstalls) {
+    Write-Host "`n--- Installing Packages ---" -ForegroundColor Yellow
+    Install-WingetPackageIfMissing -CommandNames AutoHotkey.exe, AutoHotkey64.exe -PackageId AutoHotkey.AutoHotkey -DisplayName "AutoHotkey"
+    Install-WingetPackageIfMissing -CommandNames tre.exe -PackageId ca.duan.tre-command -DisplayName "tre-command"
+    Install-WingetPackageIfMissing -CommandNames PowerToys.exe -PackageId Microsoft.PowerToys -DisplayName "PowerToys"
+}
+
+# 8. Install Nerd Fonts
 if ($DoFonts) {
     Write-Host "`n--- Installing Nerd Fonts ---" -ForegroundColor Yellow
     $FontDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"

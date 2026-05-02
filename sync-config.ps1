@@ -8,7 +8,7 @@
 
     By default shows an interactive menu to pick which sections to sync. Use -All to sync
     everything non-interactively, or pass any combination of -Profile, -Nvim, -WinTerm,
-    -Ahk to sync specific sections.
+    -Ahk, -Mpv, -PowerToys to sync specific sections.
 .EXAMPLE
     .\sync-config.ps1
     .\sync-config.ps1 -All
@@ -20,27 +20,33 @@ param(
     [switch]$Profile,
     [switch]$Nvim,
     [switch]$WinTerm,
-    [switch]$Ahk
+    [switch]$Ahk,
+    [switch]$Mpv,
+    [switch]$PowerToys
 )
 
 Write-Host "=== Windows Configuration Sync ===" -ForegroundColor Magenta
 $ConfigRoot = $PSScriptRoot
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys
 if ($All) {
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
     $DoWinTerm = [bool]$WinTerm
     $DoAhk = [bool]$Ahk
+    $DoMpv = [bool]$Mpv
+    $DoPowerToys = [bool]$PowerToys
 } else {
     Write-Host "`nSelect what to sync:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
     Write-Host "  2) Neovim config"
     Write-Host "  3) Windows Terminal settings"
     Write-Host "  4) AutoHotkey scripts"
+    Write-Host "  5) mpv config"
+    Write-Host "  6) PowerToys settings"
     Write-Host "  A) All"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -51,9 +57,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -62,12 +68,14 @@ if ($All) {
                 '2' { $DoNvim = $true }
                 '3' { $DoWinTerm = $true }
                 '4' { $DoAhk = $true }
+                '5' { $DoMpv = $true }
+                '6' { $DoPowerToys = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -195,6 +203,84 @@ if ($DoAhk) {
         Write-Host "AutoHotkey scripts synced successfully!" -ForegroundColor Green
     } else {
         Write-Host "No AutoHotkey scripts found to sync" -ForegroundColor Yellow
+    }
+}
+
+# 5. Sync mpv config
+if ($DoMpv) {
+    Write-Host "`n--- Syncing mpv Config ---" -ForegroundColor Yellow
+    $MpvSourceDir = "$env:APPDATA\mpv"
+    $MpvTargetDir = Join-Path $ConfigRoot "mpv"
+
+    if (!(Test-Path $MpvTargetDir)) {
+        New-Item -ItemType Directory -Path $MpvTargetDir -Force | Out-Null
+        Write-Host "Created mpv directory" -ForegroundColor Green
+    }
+
+    Write-Host "Syncing mpv config from: $MpvSourceDir" -ForegroundColor Cyan
+    Write-Host "Syncing to: $MpvTargetDir" -ForegroundColor Cyan
+
+    $ItemsToCopy = @(
+        "mpv.conf",
+        "scripts"
+    )
+
+    foreach ($Item in $ItemsToCopy) {
+        $SourcePath = Join-Path $MpvSourceDir $Item
+        $TargetPath = Join-Path $MpvTargetDir $Item
+
+        if (Test-Path $SourcePath) {
+            if (Test-Path $TargetPath) {
+                Write-Host "Updating existing: $Item" -ForegroundColor Yellow
+                Remove-Item $TargetPath -Recurse -Force
+            }
+
+            Write-Host "Copying: $Item" -ForegroundColor Green
+            Copy-Item $SourcePath $TargetPath -Recurse -Force
+        } else {
+            Write-Host "Warning: $Item not found in source" -ForegroundColor Yellow
+        }
+    }
+}
+
+# 6. Sync PowerToys settings
+if ($DoPowerToys) {
+    Write-Host "`n--- Syncing PowerToys Settings ---" -ForegroundColor Yellow
+    $PowerToysSourceDir = "$env:LOCALAPPDATA\Microsoft\PowerToys"
+    $PowerToysTargetDir = Join-Path $ConfigRoot "powertoys"
+
+    if (!(Test-Path $PowerToysTargetDir)) {
+        New-Item -ItemType Directory -Path $PowerToysTargetDir -Force | Out-Null
+        Write-Host "Created powertoys directory" -ForegroundColor Green
+    }
+
+    Write-Host "Syncing PowerToys settings from: $PowerToysSourceDir" -ForegroundColor Cyan
+    Write-Host "Syncing to: $PowerToysTargetDir" -ForegroundColor Cyan
+
+    if (Test-Path $PowerToysSourceDir) {
+        Get-ChildItem -LiteralPath $PowerToysTargetDir -Force -ErrorAction SilentlyContinue |
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+        $SettingsFiles = Get-ChildItem -LiteralPath $PowerToysSourceDir -Recurse -Filter settings.json -File -ErrorAction SilentlyContinue
+        if ($SettingsFiles) {
+            foreach ($File in $SettingsFiles) {
+                $RelativePath = $File.FullName.Substring($PowerToysSourceDir.Length).TrimStart('\')
+                $TargetPath = Join-Path $PowerToysTargetDir $RelativePath
+                $TargetParent = Split-Path $TargetPath -Parent
+
+                if (!(Test-Path $TargetParent)) {
+                    New-Item -ItemType Directory -Path $TargetParent -Force | Out-Null
+                }
+
+                Copy-Item $File.FullName $TargetPath -Force
+                Write-Host "Synced: $RelativePath" -ForegroundColor Green
+            }
+            Write-Host "PowerToys settings synced successfully!" -ForegroundColor Green
+        } else {
+            Write-Host "Warning: No PowerToys settings.json files found in $PowerToysSourceDir" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Warning: PowerToys settings not found at $PowerToysSourceDir" -ForegroundColor Yellow
     }
 }
 
