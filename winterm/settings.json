@@ -22,14 +22,6 @@
             "keys": "ctrl+c"
         },
         {
-            "id": null,
-            "keys": "alt+l"
-        },
-        {
-            "id": null,
-            "keys": "alt+h"
-        },
-        {
             "id": "Terminal.OpenNewTab",
             "keys": "ctrl+shift+t"
         },
@@ -56,6 +48,22 @@
         {
             "id": "Terminal.MoveFocusLeft",
             "keys": "alt+left"
+        },
+        {
+            "id": "Terminal.MoveFocusLeft",
+            "keys": "alt+h"
+        },
+        {
+            "id": "Terminal.MoveFocusDown",
+            "keys": "alt+j"
+        },
+        {
+            "id": "Terminal.MoveFocusUp",
+            "keys": "alt+k"
+        },
+        {
+            "id": "Terminal.MoveFocusRight",
+            "keys": "alt+l"
         }
     ],
     "newTabMenu": 

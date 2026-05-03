@@ -396,6 +396,30 @@ function nvcon() {
     nvim "C:\Users\samue\AppData\Local\nvim\init.lua"
 }
 function nvpro() {nvim $profile}
+function get-env {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Name
+    )
+
+    [Environment]::GetEnvironmentVariable($Name, "User")
+}
+
+function set-env {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true, Position = 1)]
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    [Environment]::SetEnvironmentVariable($Name, $Value, "User")
+    Set-Item -Path "Env:$Name" -Value $Value
+    [Environment]::GetEnvironmentVariable($Name, "User")
+}
+
 function mi($in) {mediainfo $in}
 function ffp($in) {ffprobe -hide_banner $in}
 function ffs($in) {ffprobe -v error -show_streams -select_streams v:0 $in}
