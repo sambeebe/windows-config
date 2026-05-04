@@ -133,7 +133,13 @@ if ($All) {
 if ($DoProfile) {
     Write-Host "`n--- Restoring PowerShell Profile ---" -ForegroundColor Yellow
     $ProfileSource = Join-Path $ConfigRoot "pwsh\Microsoft.PowerShell_profile.ps1"
-    $ProfileTarget = $PROFILE.CurrentUserCurrentHost
+    $ProfileTarget = if ($PROFILE -and $PROFILE.CurrentUserCurrentHost) {
+        $PROFILE.CurrentUserCurrentHost
+    } else {
+        $DocsDir = [Environment]::GetFolderPath('MyDocuments')
+        $PwshSubDir = if ($PSVersionTable.PSEdition -eq 'Core') { 'PowerShell' } else { 'WindowsPowerShell' }
+        Join-Path $DocsDir "$PwshSubDir\Microsoft.PowerShell_profile.ps1"
+    }
     $ProfileTargetDir = Split-Path $ProfileTarget -Parent
 
     if (!(Test-Path $ProfileTargetDir)) {
