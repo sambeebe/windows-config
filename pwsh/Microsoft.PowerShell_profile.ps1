@@ -420,6 +420,67 @@ function set-env {
     [Environment]::GetEnvironmentVariable($Name, "User")
 }
 
+function pyzip {
+    param(
+        [Parameter(Position = 0)]
+        [string]$Path = "."
+    )
+
+    $resolved = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $resolved) {
+        Write-Host "Path not found: $Path" -ForegroundColor Red
+        return
+    }
+
+    $target = $resolved.Path
+    if (-not (Test-Path -LiteralPath $target -PathType Container)) {
+        Write-Host "Not a directory: $target" -ForegroundColor Red
+        return
+    }
+
+    $dirNames = @(
+        "venv", ".venv", "env", ".env",
+        "build", "dist", "__pycache__",
+        ".pytest_cache", ".mypy_cache", ".ruff_cache",
+        ".tox", ".nox", "htmlcov", ".eggs"
+    )
+    $filePatterns = @(
+        "*.egg-info",
+        "*.pyc",
+        "*.pyo",
+        ".coverage"
+    )
+
+    foreach ($name in $dirNames) {
+        Get-ChildItem -LiteralPath $target -Directory -Recurse -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -eq $name } |
+            ForEach-Object {
+                Remove-Item -LiteralPath $_.FullName -Recurse -Force
+                Write-Host "Removed directory: $($_.FullName)" -ForegroundColor Yellow
+            }
+    }
+
+    foreach ($pattern in $filePatterns) {
+        Get-ChildItem -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue |
+            Where-Object { -not $_.PSIsContainer -and $_.Name -like $pattern } |
+            ForEach-Object {
+                Remove-Item -LiteralPath $_.FullName -Force
+                Write-Host "Removed file: $($_.FullName)" -ForegroundColor Yellow
+            }
+    }
+
+    $parent = Split-Path $target -Parent
+    $name = Split-Path $target -Leaf
+    $zipPath = Join-Path $parent ($name + ".zip")
+
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+
+    Compress-Archive -LiteralPath $target -DestinationPath $zipPath -Force
+    Write-Host "Created zip: $zipPath" -ForegroundColor Green
+}
+
 function mi($in) {mediainfo $in}
 function ffp($in) {ffprobe -hide_banner $in}
 function ffs($in) {ffprobe -v error -show_streams -select_streams v:0 $in}
