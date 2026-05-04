@@ -133,7 +133,7 @@ if ($All) {
 if ($DoProfile) {
     Write-Host "`n--- Restoring PowerShell Profile ---" -ForegroundColor Yellow
     $ProfileSource = Join-Path $ConfigRoot "pwsh\Microsoft.PowerShell_profile.ps1"
-    $ProfileTarget = "$env:USERPROFILE\Documents_LOCAL\PowerShell\Microsoft.PowerShell_profile.ps1"
+    $ProfileTarget = $PROFILE.CurrentUserCurrentHost
     $ProfileTargetDir = Split-Path $ProfileTarget -Parent
 
     if (!(Test-Path $ProfileTargetDir)) {
