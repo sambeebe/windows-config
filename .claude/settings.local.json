@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(& \"C:\\\\Users\\\\samue\\\\windows-config\\\\restore-config.ps1\" -Fonts)"
+      "PowerShell(& \"C:\\\\Users\\\\samue\\\\windows-config\\\\restore-config.ps1\" -Fonts)",
+      "Bash(ffmpeg -version)",
+      "Bash(ffprobe -version)",
+      "WebSearch"
     ]
   }
 }

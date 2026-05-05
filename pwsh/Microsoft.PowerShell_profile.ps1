@@ -485,6 +485,37 @@ function mi($in) {mediainfo $in}
 function ffp($in) {ffprobe -hide_banner $in}
 function ffs($in) {ffprobe -v error -show_streams -select_streams v:0 $in}
 
+function fff($in) {
+    ffprobe -v error -count_frames -select_streams v:0 `
+        -show_entries stream=nb_read_frames `
+        -of default=nokey=1:noprint_wrappers=1 $in
+}
+
+function tv {
+    param(
+        [Parameter(Mandatory=$true, Position=0)] [string]$Path,
+        [Parameter(Position=1)] [int]$Frames = 5
+    )
+
+    $resolved = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $resolved) {
+        Write-Host "File not found: $Path" -ForegroundColor Red
+        return
+    }
+
+    $src = $resolved.Path
+    $dir = Split-Path $src -Parent
+    $base = [System.IO.Path]::GetFileNameWithoutExtension($src)
+    $ext = [System.IO.Path]::GetExtension($src)
+    $out = Join-Path $dir ("{0}_trim{1}f{2}" -f $base, $Frames, $ext)
+
+    ffmpeg -y -i $src -frames:v $Frames -c copy $out
+    if ($LASTEXITCODE -ne 0) {
+        ffmpeg -y -i $src -frames:v $Frames $out
+    }
+    Write-Host "Wrote: $out" -ForegroundColor Green
+}
+
 Set-PSReadLineOption -PredictionSource History
 Set-PSReadLineOption -PredictionViewStyle ListView
 
