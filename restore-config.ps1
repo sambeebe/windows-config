@@ -25,7 +25,9 @@ param(
     [switch]$Mpv,
     [switch]$PowerToys,
     [switch]$Installs,
-    [switch]$Fonts
+    [switch]$Fonts,
+    [switch]$Ffmpeg,
+    [switch]$PowerToysInstall
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
@@ -59,21 +61,32 @@ function Install-WingetPackageIfMissing {
 
     Write-Host "Installing $DisplayName..." -ForegroundColor Cyan
     try {
-        & $Winget.Source install --id $PackageId --exact --accept-package-agreements --accept-source-agreements
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "$DisplayName installed successfully." -ForegroundColor Green
+        & $Winget.Source install --id $PackageId --exact --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host $_ }
+        $code = $LASTEXITCODE
+
+        # winget exit codes that mean "nothing to do" — treat as success so the
+        # restore loop keeps going on machines where the package is already current.
+        $okCodes = @(
+            0,
+            -1978335189,  # APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE (no update)
+            -1978335135,  # APPINSTALLER_CLI_ERROR_PACKAGE_ALREADY_INSTALLED
+            -1978334975   # APPINSTALLER_CLI_ERROR_NO_APPLICABLE_INSTALLER (sometimes for already-installed)
+        )
+        if ($okCodes -contains $code) {
+            Write-Host "$DisplayName is up to date." -ForegroundColor Green
         } else {
-            Write-Host "Failed to install $DisplayName (exit code $LASTEXITCODE)." -ForegroundColor Red
+            Write-Host "Failed to install $DisplayName (exit code $code). Continuing." -ForegroundColor Red
         }
     } catch {
-        Write-Host "Error installing ${DisplayName}: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Error installing ${DisplayName}: $($_.Exception.Message). Continuing." -ForegroundColor Red
     }
 }
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall
 if ($All) {
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true
+    # -All intentionally excludes PowerToysInstall (heavy update); pass it explicitly when wanted.
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
@@ -83,6 +96,8 @@ if ($All) {
     $DoPowerToys = [bool]$PowerToys
     $DoInstalls = [bool]$Installs
     $DoFonts = [bool]$Fonts
+    $DoFfmpeg = [bool]$Ffmpeg
+    $DoPowerToysInstall = [bool]$PowerToysInstall
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
@@ -91,9 +106,11 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (AutoHotkey, tre-command, PowerToys)"
+    Write-Host "  7) Installs (AutoHotkey, tre-command)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
-    Write-Host "  A) All"
+    Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
+    Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
+    Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
     $Choice = (Read-Host).Trim().ToUpper()
@@ -103,27 +120,29 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
             switch ($P) {
-                '1' { $DoProfile = $true }
-                '2' { $DoNvim = $true }
-                '3' { $DoWinTerm = $true }
-                '4' { $DoAhk = $true }
-                '5' { $DoMpv = $true }
-                '6' { $DoPowerToys = $true }
-                '7' { $DoInstalls = $true }
-                '8' { $DoFonts = $true }
+                '1'  { $DoProfile = $true }
+                '2'  { $DoNvim = $true }
+                '3'  { $DoWinTerm = $true }
+                '4'  { $DoAhk = $true }
+                '5'  { $DoMpv = $true }
+                '6'  { $DoPowerToys = $true }
+                '7'  { $DoInstalls = $true }
+                '8'  { $DoFonts = $true }
+                '9'  { $DoFfmpeg = $true }
+                '10' { $DoPowerToysInstall = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -336,9 +355,19 @@ if ($DoPowerToys) {
 # 7. Install packages
 if ($DoInstalls) {
     Write-Host "`n--- Installing Packages ---" -ForegroundColor Yellow
-    Install-WingetPackageIfMissing -CommandNames AutoHotkey.exe, AutoHotkey64.exe -PackageId AutoHotkey.AutoHotkey -DisplayName "AutoHotkey"
-    Install-WingetPackageIfMissing -CommandNames tre.exe -PackageId ca.duan.tre-command -DisplayName "tre-command"
-    Install-WingetPackageIfMissing -CommandNames PowerToys.exe -PackageId Microsoft.PowerToys -DisplayName "PowerToys"
+    # PowerToys is intentionally NOT in this bundle — its update is heavy.
+    # Use option 10 / -PowerToysInstall to install or update it.
+    $installs = @(
+        @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
+        @{ CommandNames = @('tre.exe');                            PackageId = 'ca.duan.tre-command';   DisplayName = 'tre-command' }
+    )
+    foreach ($pkg in $installs) {
+        try {
+            Install-WingetPackageIfMissing -CommandNames $pkg.CommandNames -PackageId $pkg.PackageId -DisplayName $pkg.DisplayName -ErrorAction Continue
+        } catch {
+            Write-Host "Skipping $($pkg.DisplayName): $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
 }
 
 # 8. Install Nerd Fonts
@@ -388,6 +417,31 @@ if ($DoFonts) {
         } finally {
             Remove-Item $TmpZip, $TmpDir -Recurse -Force -ErrorAction SilentlyContinue
         }
+    }
+}
+
+# 9. Install / update ffmpeg (>= 8.1)
+if ($DoFfmpeg) {
+    Write-Host "`n--- Installing ffmpeg (>= 8.1) ---" -ForegroundColor Yellow
+    $FfmpegScript = Join-Path $ConfigRoot "pwsh\install-ffmpeg.ps1"
+    if (Test-Path $FfmpegScript) {
+        try {
+            & $FfmpegScript
+        } catch {
+            Write-Host "Error running install-ffmpeg.ps1: $($_.Exception.Message). Continuing." -ForegroundColor Red
+        }
+    } else {
+        Write-Host "Warning: install-ffmpeg.ps1 not found at $FfmpegScript" -ForegroundColor Red
+    }
+}
+
+# 10. Install / update PowerToys (heavy; opt-in)
+if ($DoPowerToysInstall) {
+    Write-Host "`n--- Installing PowerToys (heavy) ---" -ForegroundColor Yellow
+    try {
+        Install-WingetPackageIfMissing -CommandNames PowerToys.exe -PackageId Microsoft.PowerToys -DisplayName "PowerToys" -ErrorAction Continue
+    } catch {
+        Write-Host "Skipping PowerToys: $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 
