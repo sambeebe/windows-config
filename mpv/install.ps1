@@ -11,7 +11,8 @@
 [CmdletBinding()]
 param(
     [string]$Destination = (Join-Path $env:LOCALAPPDATA 'Programs\mpv'),
-    [switch]$AddToPath
+    [switch]$AddToPath,
+    [switch]$NoAssocPrompt
 )
 
 $ErrorActionPreference = 'Stop'
@@ -44,3 +45,35 @@ if ($AddToPath) {
 }
 
 Write-Host "Done: $(Join-Path $Destination 'mpv.exe')" -ForegroundColor Magenta
+
+if (-not $NoAssocPrompt) {
+    Write-Host ""
+    $ans = Read-Host "Make mpv the default for common video files (.mp4 .mov .mkv .webm .avi .m4v .wmv .flv)? [y/N]"
+    if ($ans -match '^(y|yes)$') {
+        $mpvPath = Join-Path $Destination 'mpv.exe'
+        $exts = '.mp4','.mov','.mkv','.webm','.avi','.m4v','.wmv','.flv'
+
+        # Per-user app registration. No admin needed; HKCU only.
+        $appKey = 'HKCU:\Software\Classes\Applications\mpv.exe'
+        New-Item -Path $appKey -Force | Out-Null
+        Set-ItemProperty -Path $appKey -Name 'FriendlyAppName' -Value 'mpv'
+        New-Item -Path "$appKey\shell\open\command" -Force | Out-Null
+        Set-Item -LiteralPath "$appKey\shell\open\command" -Value ('"{0}" "%1"' -f $mpvPath)
+
+        $supported = "$appKey\SupportedTypes"
+        New-Item -Path $supported -Force | Out-Null
+        foreach ($ext in $exts) { Set-ItemProperty -Path $supported -Name $ext -Value '' }
+
+        # Add mpv to each extension's "Open with" list.
+        foreach ($ext in $exts) {
+            $owl = "HKCU:\Software\Classes\$ext\OpenWithList"
+            New-Item -Path $owl -Force | Out-Null
+            Set-ItemProperty -Path $owl -Name 'a' -Value 'mpv.exe'
+            Set-ItemProperty -Path $owl -Name 'MRUList' -Value 'a'
+        }
+
+        Write-Host "Registered mpv. Windows requires one click to confirm the default —" -ForegroundColor Green
+        Write-Host "opening Default Apps settings; find 'mpv' and set it as default." -ForegroundColor Green
+        Start-Process 'ms-settings:defaultapps'
+    }
+}
