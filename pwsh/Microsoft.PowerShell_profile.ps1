@@ -662,6 +662,11 @@ Set-Alias c cpath
 #     return $str
 # }
 
+# zoxide — `z <partial>` jumps to a frecent dir, `zi` for interactive picker.
+if (Get-Command zoxide -ErrorAction SilentlyContinue) {
+    Invoke-Expression (& { (zoxide init powershell | Out-String) })
+}
+
 # Per-machine overrides. Create local.ps1 next to this profile for work-only aliases/functions.
 $LocalProfile = Join-Path (Split-Path $PROFILE -Parent) 'local.ps1'
 if (Test-Path $LocalProfile) { . $LocalProfile }

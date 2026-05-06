@@ -294,6 +294,7 @@ if ($DoMpv) {
 
     $ItemsToCopy = @(
         "mpv.conf",
+        "input.conf",
         "scripts"
     )
 
@@ -359,7 +360,8 @@ if ($DoInstalls) {
     # Use option 10 / -PowerToysInstall to install or update it.
     $installs = @(
         @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
-        @{ CommandNames = @('tre.exe');                            PackageId = 'ca.duan.tre-command';   DisplayName = 'tre-command' }
+        @{ CommandNames = @('tre.exe');                            PackageId = 'ca.duan.tre-command';   DisplayName = 'tre-command' },
+        @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' }
     )
     foreach ($pkg in $installs) {
         try {
