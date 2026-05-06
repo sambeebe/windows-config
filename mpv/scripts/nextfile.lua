@@ -407,15 +407,17 @@ function move_current_file_to_folder(folder_name)
 	end)
 end
 
-mp.add_key_binding("ALT+a", "move_file_to_folder_a", function()
-	move_current_file_to_folder("a")
-end)
-
-mp.add_key_binding("ALT+b", "move_file_to_folder_b", function()
-	move_current_file_to_folder("b")
-end)
-
-mp.add_key_binding("ALT+c", "move_file_to_folder_c", function()
-	move_current_file_to_folder("c")
-end)
+-- Disabled by default: easy to mash by accident and these MOVE files on disk.
+-- Uncomment to re-enable, or rebind to something less reachable.
+-- mp.add_key_binding("ALT+a", "move_file_to_folder_a", function()
+-- 	move_current_file_to_folder("a")
+-- end)
+--
+-- mp.add_key_binding("ALT+b", "move_file_to_folder_b", function()
+-- 	move_current_file_to_folder("b")
+-- end)
+--
+-- mp.add_key_binding("ALT+c", "move_file_to_folder_c", function()
+-- 	move_current_file_to_folder("c")
+-- end)
 
