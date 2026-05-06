@@ -391,6 +391,27 @@ function uz {
 }
 
 function n($in) { nvim $in }
+
+function nvl {
+    $latest = Get-ChildItem -File | Sort-Object CreationTime -Descending | Select-Object -First 1
+    if (-not $latest) {
+        Write-Host "No files in $(Get-Location)" -ForegroundColor Yellow
+        return
+    }
+    nvim $latest.FullName
+}
+
+function fnv {
+    param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Query)
+    $q = ($Query -join ' ')
+    $env:FNV_Q = $q
+    try {
+        nvim -c "lua require('telescope.builtin').find_files({default_text = vim.env.FNV_Q or ''})"
+    } finally {
+        Remove-Item Env:FNV_Q -ErrorAction SilentlyContinue
+    }
+}
+
 function nvcon() {
     cd "C:\Users\samue\AppData\Local\nvim"
     nvim "C:\Users\samue\AppData\Local\nvim\init.lua"

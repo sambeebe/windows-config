@@ -245,6 +245,28 @@ vim.keymap.set("n", "<leader>sn", function()
 	builtin.find_files({ cwd = vim.fn.stdpath("config") })
 end, { desc = "[S]earch [N]eovim files" })
 
+vim.api.nvim_create_user_command("Latest", function()
+	local cwd = vim.fn.getcwd()
+	local entries = vim.fn.readdir(cwd)
+	local newest, newest_time = nil, -1
+	for _, name in ipairs(entries) do
+		local full = cwd .. "/" .. name
+		local st = vim.uv.fs_stat(full)
+		if st and st.type == "file" then
+			local t = st.birthtime and st.birthtime.sec or st.mtime.sec
+			if t > newest_time then
+				newest_time = t
+				newest = full
+			end
+		end
+	end
+	if newest then
+		vim.cmd.edit(vim.fn.fnameescape(newest))
+	else
+		vim.notify("No files in " .. cwd, vim.log.levels.WARN)
+	end
+end, { desc = "Edit newest file in cwd" })
+
 -- Lazydev setup
 require("lazydev").setup({
 	library = {
