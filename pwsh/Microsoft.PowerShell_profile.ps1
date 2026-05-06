@@ -641,3 +641,6 @@ Set-Alias c cpath
 #     return $str
 # }
 
+# Per-machine overrides. Create local.ps1 next to this profile for work-only aliases/functions.
+$LocalProfile = Join-Path (Split-Path $PROFILE -Parent) 'local.ps1'
+if (Test-Path $LocalProfile) { . $LocalProfile }
