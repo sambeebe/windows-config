@@ -5,7 +5,9 @@
 ; Hotkey: Ctrl + Shift + D  (change if you want)
 ; --------------------------------------------------
 
+#HotIf WinActive("ahk_class CabinetWClass")
 ^+d::CloneExplorerTab()
+#HotIf
 
 
 CloneExplorerTab() {
