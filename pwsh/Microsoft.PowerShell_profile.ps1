@@ -1,4 +1,5 @@
 function nvmpv { nvim C:\Users\samue\AppData\Roaming\mpv\mpv.conf }
+function nvloc { nvim (Join-Path (Split-Path $PROFILE -Parent) 'local.ps1') }
 
 function Invoke-TabCycle {
     param([int]$Direction)
