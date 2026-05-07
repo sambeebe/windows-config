@@ -1,7 +1,5 @@
 function nvmpv { nvim C:\Users\samue\AppData\Roaming\mpv\mpv.conf }
 
-. "$env:USERPROFILE\windows-config\pwsh\display-utils.ps1"
-
 function Invoke-TabCycle {
     param([int]$Direction)
 
