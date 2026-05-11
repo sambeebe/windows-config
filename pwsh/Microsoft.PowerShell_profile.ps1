@@ -391,14 +391,16 @@ function uz {
 
 function n($in) { nvim $in }
 
-function nvl {
-    $latest = Get-ChildItem -File | Sort-Object CreationTime -Descending | Select-Object -First 1
+function nvr {
+    $latest = Get-ChildItem -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if (-not $latest) {
         Write-Host "No files in $(Get-Location)" -ForegroundColor Yellow
         return
     }
     nvim $latest.FullName
 }
+
+function nvl { nvr }
 
 function fnv {
     param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Query)

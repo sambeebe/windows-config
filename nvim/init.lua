@@ -253,7 +253,7 @@ vim.api.nvim_create_user_command("Latest", function()
 		local full = cwd .. "/" .. name
 		local st = vim.uv.fs_stat(full)
 		if st and st.type == "file" then
-			local t = st.birthtime and st.birthtime.sec or st.mtime.sec
+			local t = st.mtime.sec
 			if t > newest_time then
 				newest_time = t
 				newest = full
