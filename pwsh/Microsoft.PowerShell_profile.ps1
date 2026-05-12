@@ -671,3 +671,44 @@ if (Get-Command zoxide -ErrorAction SilentlyContinue) {
 # Per-machine overrides. Create local.ps1 next to this profile for work-only aliases/functions.
 $LocalProfile = Join-Path (Split-Path $PROFILE -Parent) 'local.ps1'
 if (Test-Path $LocalProfile) { . $LocalProfile }
+
+function Get-TerminalFolderTitle {
+    $location = $executionContext.SessionState.Path.CurrentLocation
+    $path = if ($location.Provider.Name -eq "FileSystem") {
+        $location.ProviderPath
+    } else {
+        $location.Path
+    }
+
+    $trimmedPath = $path.TrimEnd('\', '/')
+    if ([string]::IsNullOrWhiteSpace($trimmedPath)) {
+        return $path
+    }
+
+    $leaf = Split-Path -Leaf $trimmedPath
+    if ([string]::IsNullOrWhiteSpace($leaf)) {
+        return $trimmedPath
+    }
+
+    return $leaf
+}
+
+if ($function:prompt.ToString() -notmatch 'Set-TerminalFolderTitle') {
+    $global:PromptBeforeTerminalFolderTitle = $function:prompt
+}
+
+function Set-TerminalFolderTitle {
+    $title = (Get-TerminalFolderTitle) -replace [char]7, ''
+    try {
+        $Host.UI.RawUI.WindowTitle = $title
+    } catch {
+    }
+
+    return "$([char]27)]0;$title$([char]7)"
+}
+
+function prompt {
+    $titleSequence = Set-TerminalFolderTitle
+    $promptText = & $global:PromptBeforeTerminalFolderTitle
+    return "$titleSequence$promptText"
+}

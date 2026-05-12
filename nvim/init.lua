@@ -519,6 +519,18 @@ require("mini.surround").setup({
 })
 
 -- STATUS LINE
+local function current_folder()
+	local cwd = vim.fn.getcwd()
+	local trimmed = cwd:gsub("[/\\]+$", "")
+	local folder = trimmed:match("[^/\\]+$")
+
+	if folder and folder ~= "" then
+		return folder
+	end
+
+	return cwd
+end
+
 require("lualine").setup({
 	options = {
 		icons_enabled = true,
@@ -555,7 +567,7 @@ require("lualine").setup({
 	sections = {
 		lualine_a = { "mode" },
 		lualine_b = { "branch", "diff", "diagnostics" },
-		lualine_c = { "filename" },
+		lualine_c = { current_folder, "filename" },
 		lualine_x = { "encoding", "fileformat", "filetype" },
 		lualine_y = { "progress" },
 		lualine_z = { "location" },
@@ -563,7 +575,7 @@ require("lualine").setup({
 	inactive_sections = {
 		lualine_a = {},
 		lualine_b = {},
-		lualine_c = { "filename" },
+		lualine_c = { current_folder, "filename" },
 		lualine_x = { "location" },
 		lualine_y = {},
 		lualine_z = {},
