@@ -169,11 +169,15 @@ function Prompt {
         Write-Host $osc -NoNewline
     }
 
-    $parts = ($loc.ProviderPath -split '[\\/]') | Where-Object { $_ }
-    $lastTwo = if ($parts.Count -ge 2) { ($parts[-3..-1] -join '\') } else { $parts[-1] }
-
+    $path = $loc.ProviderPath.TrimEnd('\', '/')
+    $parts = ($path -split '[\\\\/]') | Where-Object { $_ }
+    $drive = if ($parts.Count -gt 0 -and $parts[0] -match '^[A-Za-z]:$') { $parts[0] } else { $loc.Drive.Name }
+    $folderParts = if ($parts.Count -gt 1) { $parts[1..($parts.Count - 1)] } else { @() }
+    $folderSuffix = if ($folderParts.Count -gt 2) { $folderParts[-2..-1] } else { $folderParts }
+    $folderPath = if ($folderSuffix.Count -gt 0) { $folderSuffix -join '\' } else { '\' }
     # Explicitly set the path color to white/gray, chevron in cyan
-    Write-Host $lastTwo -ForegroundColor White -NoNewline
+    Write-Host "[$drive]" -ForegroundColor DarkGray -NoNewline
+    Write-Host " $folderPath" -ForegroundColor White -NoNewline
     Write-Host (' >' * ($nestedPromptLevel + 1)) -ForegroundColor Cyan -NoNewline
 
     return ' '

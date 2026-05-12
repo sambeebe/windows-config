@@ -10,6 +10,24 @@ vim.g.format_on_save_enabled = false
 -- Use system clipboard as default register
 vim.opt.clipboard = "unnamedplus"
 
+local function set_terminal_folder_title()
+	local cwd = vim.fn.getcwd()
+	local title = vim.fn.fnamemodify(cwd, ":t")
+
+	if title == "" then
+		title = cwd
+	end
+
+	vim.o.title = true
+	vim.o.titlestring = title
+end
+
+set_terminal_folder_title()
+vim.api.nvim_create_autocmd({ "VimEnter", "DirChanged", "BufEnter" }, {
+	group = vim.api.nvim_create_augroup("terminal-folder-title", { clear = true }),
+	callback = set_terminal_folder_title,
+})
+
 vim.o.number = true
 vim.o.mouse = "a"
 vim.o.showmode = false

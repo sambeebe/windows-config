@@ -18,6 +18,10 @@
             "keys": "ctrl+shift+d"
         },
         {
+            "id": "Terminal.ClosePane",
+            "keys": "ctrl+shift+w"
+        },
+        {
             "id": "Terminal.CopyToClipboard",
             "keys": "ctrl+c"
         },
