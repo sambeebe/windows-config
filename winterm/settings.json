@@ -18,6 +18,38 @@
             "keys": "ctrl+shift+d"
         },
         {
+            "command": 
+            {
+                "action": "switchToTab",
+                "index": 0
+            },
+            "keys": "ctrl+alt+a"
+        },
+        {
+            "command": 
+            {
+                "action": "switchToTab",
+                "index": 1
+            },
+            "keys": "ctrl+alt+s"
+        },
+        {
+            "command": 
+            {
+                "action": "switchToTab",
+                "index": 2
+            },
+            "keys": "ctrl+alt+q"
+        },
+        {
+            "command": 
+            {
+                "action": "switchToTab",
+                "index": 3
+            },
+            "keys": "ctrl+alt+w"
+        },
+        {
             "id": "Terminal.ClosePane",
             "keys": "ctrl+shift+w"
         },
