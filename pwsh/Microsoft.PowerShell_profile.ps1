@@ -446,10 +446,212 @@ function set-env {
     [Environment]::GetEnvironmentVariable($Name, "User")
 }
 
+function Get-RemoteCopyTarget {
+    $user = $env:REMOTE_COPY_USER
+    $sshHost = $env:REMOTE_COPY_HOST
+
+    if ([string]::IsNullOrWhiteSpace($user)) {
+        throw "Missing env var REMOTE_COPY_USER. Example: set-env REMOTE_COPY_USER username"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($sshHost)) {
+        throw "Missing env var REMOTE_COPY_HOST. Example: set-env REMOTE_COPY_HOST remote-host"
+    }
+
+    if ($user -notmatch '^[A-Za-z0-9._-]+$') {
+        throw "Unsafe SSH user in REMOTE_COPY_USER: $user"
+    }
+
+    if ($sshHost -notmatch '^[A-Za-z0-9._:-]+$') {
+        throw "Unsafe SSH host in REMOTE_COPY_HOST: $sshHost"
+    }
+
+    "$user@$sshHost"
+}
+
+function ConvertTo-RemoteCopyPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$OriginalPath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ResolvedPath
+    )
+
+    $remoteRoot = if ($env:REMOTE_COPY_ROOT) { $env:REMOTE_COPY_ROOT.TrimEnd('/') } else { "~" }
+    if ($remoteRoot -notmatch '^(~|/[A-Za-z0-9_./-]+)$' -or $remoteRoot -match '(^|/)\.\.(/|$)') {
+        throw "Unsafe remote root in REMOTE_COPY_ROOT: $remoteRoot"
+    }
+
+    $relativePath = $null
+    if (-not [System.IO.Path]::IsPathFullyQualified($OriginalPath)) {
+        $relativePath = $OriginalPath
+    } else {
+        $userHomePath = (Resolve-Path -LiteralPath $env:USERPROFILE).Path.TrimEnd('\', '/')
+        if ($ResolvedPath.StartsWith($userHomePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $relativePath = $ResolvedPath.Substring($userHomePath.Length).TrimStart('\', '/')
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($relativePath)) {
+        $relativePath = Split-Path -Leaf $ResolvedPath
+    }
+
+    $relativePath = $relativePath.TrimStart('.', '\', '/')
+    $remotePath = "$remoteRoot/$($relativePath -replace '\\', '/')"
+    $remotePath = $remotePath -replace '/+', '/'
+    $remotePath = $remotePath -replace '^~/', '~/'
+
+    if ($remotePath -match '[`"$'';&|<>\\\s\r\n]' -or $remotePath -match '(^|/)\.\.(/|$)') {
+        throw "Unsafe remote path derived from local path: $remotePath"
+    }
+
+    $remotePath
+}
+
+function Copy-FileToRemote {
+    param(
+        [Parameter(Mandatory = $true, Position = 0)]
+        [string]$Path,
+
+        [Parameter(Position = 1)]
+        [ValidatePattern('^[A-Za-z0-9_./~:-]+$')]
+        [string]$RemotePath
+    )
+
+    $resolved = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
+    if (-not $resolved) {
+        Write-Error "Path not found: $Path"
+        return
+    }
+
+    $item = Get-Item -LiteralPath $resolved.Path
+    if ($item.PSIsContainer) {
+        Write-Error "Expected a file, got a directory: $($item.FullName)"
+        return
+    }
+
+    $target = Get-RemoteCopyTarget
+    if ([string]::IsNullOrWhiteSpace($RemotePath)) {
+        $RemotePath = ConvertTo-RemoteCopyPath -OriginalPath $Path -ResolvedPath $item.FullName
+    }
+
+    if ($RemotePath -match '[`"$'';&|<>\\\s\r\n]' -or $RemotePath -match '(^|/)\.\.(/|$)') {
+        throw "Unsafe remote path: $RemotePath"
+    }
+
+    $remoteDir = Split-Path -Parent ($RemotePath -replace '\\', '/')
+    if ([string]::IsNullOrWhiteSpace($remoteDir)) {
+        $remoteDir = "~"
+    }
+
+    ssh $target "mkdir -p $remoteDir"
+    if ($LASTEXITCODE -ne 0) {
+        return
+    }
+
+    scp $item.FullName "${target}:$RemotePath"
+}
+
+Set-Alias cpremote Copy-FileToRemote
+
+function Copy-ClipboardToSquidleader {
+    param(
+        [Parameter(Position = 0)]
+        [ValidatePattern('^[A-Za-z0-9_./~:-]+$')]
+        [string]$RemoteDir = "~/fromwindows"
+    )
+
+    $target = "squidleader@192.168.1.253"
+    $RemoteDir = $RemoteDir.TrimEnd('/')
+    if ($RemoteDir -notmatch '^(~(/[A-Za-z0-9_./-]+)?|/[A-Za-z0-9_./-]+)$' -or $RemoteDir -match '(^|/)\.\.(/|$)') {
+        throw "Unsafe remote directory: $RemoteDir"
+    }
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+    $remotePath = "$RemoteDir/$timestamp.txt"
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) "clipboard-$timestamp.txt"
+
+    try {
+        $text = Get-Clipboard -Raw
+        if ($null -eq $text) {
+            $text = ""
+        }
+
+        [System.IO.File]::WriteAllText($tempFile, $text, [System.Text.UTF8Encoding]::new($false))
+
+        ssh $target "mkdir -p $RemoteDir"
+        if ($LASTEXITCODE -ne 0) {
+            return
+        }
+
+        scp $tempFile "${target}:$remotePath"
+        if ($LASTEXITCODE -eq 0) {
+            Write-Output "Sent clipboard to ${target}:$remotePath"
+        }
+    }
+    finally {
+        Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Set-Alias cbremote Copy-ClipboardToSquidleader
+
+function Apply-ClipboardGitPatch {
+    $clipboard = Get-Clipboard -Raw
+    if ([string]::IsNullOrWhiteSpace($clipboard)) {
+        throw "Clipboard is empty."
+    }
+
+    $fencedDiff = [regex]::Match(
+        $clipboard,
+        '\A\s*```diff[ \t]*\r?\n(?<patch>.*)(?<newline>\r?\n)```[ \t]*\s*\z',
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
+    if (-not $fencedDiff.Success) {
+        throw "Clipboard must contain exactly one fenced diff code block."
+    }
+
+    $patch = $fencedDiff.Groups["patch"].Value + $fencedDiff.Groups["newline"].Value
+    if ($patch -notmatch '(?m)^diff --git a/.+ b/.+$') {
+        throw "Clipboard diff is missing a 'diff --git a/path b/path' header."
+    }
+
+    $repoRoot = & git rev-parse --show-toplevel 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($repoRoot)) {
+        throw "Current directory is not inside a Git repository."
+    }
+    $repoRoot = $repoRoot.Trim()
+
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ("clipboard-patch-{0}.diff" -f [guid]::NewGuid().ToString("N"))
+    try {
+        [System.IO.File]::WriteAllText($tempFile, $patch, [System.Text.UTF8Encoding]::new($false))
+
+        & git -C $repoRoot apply --check -- $tempFile
+        if ($LASTEXITCODE -ne 0) {
+            throw "Clipboard patch failed git apply --check."
+        }
+
+        & git -C $repoRoot apply -- $tempFile
+        if ($LASTEXITCODE -ne 0) {
+            throw "git apply failed."
+        }
+
+        Write-Host "Applied clipboard patch in: $repoRoot" -ForegroundColor Green
+    }
+    finally {
+        Remove-Item -LiteralPath $tempFile -Force -ErrorAction SilentlyContinue
+    }
+}
+
+Set-Alias gpatch Apply-ClipboardGitPatch
+
 function pyzip {
     param(
         [Parameter(Position = 0)]
-        [string]$Path = "."
+        [string]$Path = ".",
+
+        [switch]$Hash
     )
 
     $resolved = Resolve-Path -LiteralPath $Path -ErrorAction SilentlyContinue
@@ -504,6 +706,19 @@ function pyzip {
     }
 
     Compress-Archive -LiteralPath $target -DestinationPath $zipPath -Force
+
+    if ($Hash) {
+        $shortHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.Substring(0, 8).ToLowerInvariant()
+        $hashedZipPath = Join-Path $parent ("{0}-{1}.zip" -f $name, $shortHash)
+
+        if (Test-Path -LiteralPath $hashedZipPath) {
+            Remove-Item -LiteralPath $hashedZipPath -Force
+        }
+
+        Move-Item -LiteralPath $zipPath -Destination $hashedZipPath
+        $zipPath = $hashedZipPath
+    }
+
     Write-Host "Created zip: $zipPath" -ForegroundColor Green
 }
 
