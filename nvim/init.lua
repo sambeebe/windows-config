@@ -537,6 +537,16 @@ require("mini.surround").setup({
 })
 
 -- STATUS LINE
+local function current_drive()
+	local drive = vim.fn.getcwd():match("^([A-Za-z]:)")
+
+	if drive then
+		return drive:upper()
+	end
+
+	return ""
+end
+
 local function current_folder()
 	local cwd = vim.fn.getcwd()
 	local trimmed = cwd:gsub("[/\\]+$", "")
@@ -548,6 +558,27 @@ local function current_folder()
 
 	return cwd
 end
+
+-- Full cwd-relative breadcrumb option, if you want it later:
+-- local function current_path_from_cwd()
+-- 	local cwd = vim.fn.getcwd()
+-- 	local cwd_trimmed = cwd:gsub("[/\\]+$", "")
+-- 	local cwd_name = cwd_trimmed:match("[^/\\]+$")
+-- 	local file = vim.fn.expand("%:.")
+-- 	local parts = {}
+--
+-- 	if cwd_name and cwd_name ~= "" then
+-- 		table.insert(parts, cwd_name)
+-- 	end
+--
+-- 	for part in file:gmatch("[^/\\]+") do
+-- 		if part ~= "." and part ~= "" then
+-- 			table.insert(parts, part)
+-- 		end
+-- 	end
+--
+-- 	return table.concat(parts, " / ")
+-- end
 
 require("lualine").setup({
 	options = {
@@ -564,7 +595,7 @@ require("lualine").setup({
 		always_show_tabline = true,
 		globalstatus = false,
 		refresh = {
-			statusline = 1000,
+			statusline = 200,
 			tabline = 1000,
 			winbar = 1000,
 			refresh_time = 16, -- ~60fps
@@ -585,7 +616,7 @@ require("lualine").setup({
 	sections = {
 		lualine_a = { "mode" },
 		lualine_b = { "branch", "diff", "diagnostics" },
-		lualine_c = { current_folder, "filename" },
+		lualine_c = { current_drive, current_folder, "filename" },
 		lualine_x = { "encoding", "fileformat", "filetype" },
 		lualine_y = { "progress" },
 		lualine_z = { "location" },
@@ -593,7 +624,7 @@ require("lualine").setup({
 	inactive_sections = {
 		lualine_a = {},
 		lualine_b = {},
-		lualine_c = { current_folder, "filename" },
+		lualine_c = { current_drive, current_folder, "filename" },
 		lualine_x = { "location" },
 		lualine_y = {},
 		lualine_z = {},

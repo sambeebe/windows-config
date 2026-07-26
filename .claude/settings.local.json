@@ -4,7 +4,9 @@
       "PowerShell(& \"C:\\\\Users\\\\samue\\\\windows-config\\\\restore-config.ps1\" -Fonts)",
       "Bash(ffmpeg -version)",
       "Bash(ffprobe -version)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node *)",
+      "Bash(cd *)"
     ]
   }
 }

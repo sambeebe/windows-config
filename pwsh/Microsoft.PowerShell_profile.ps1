@@ -331,6 +331,14 @@ function e() {
     }
 }
 function gs { git status }
+function gsf {
+    git status --short | fzf | ForEach-Object {
+        $file = ($_ -replace '^.{3}', '')
+        if ($file) {
+            nvim $file
+        }
+    }
+}
 function gap {
     param([Parameter(ValueFromRemainingArguments=$true)][string[]]$msg)
     $m = $msg -join ' '
@@ -394,6 +402,166 @@ function uz {
 }
 
 function n($in) { nvim $in }
+
+function Get-FzfPathCandidate {
+    param(
+        [ValidateSet('Any', 'File', 'Directory')]
+        [string]$Type = 'Any'
+    )
+
+    if (Get-Command fd -ErrorAction SilentlyContinue) {
+        $fdArgs = @('--hidden', '--follow', '--exclude', '.git')
+        switch ($Type) {
+            'File' { $fdArgs += @('--type', 'f') }
+            'Directory' { $fdArgs += @('--type', 'd') }
+            default { $fdArgs += @('--type', 'f', '--type', 'd') }
+        }
+
+        & fd @fdArgs
+        return
+    }
+
+    $items = Get-ChildItem -Force -Recurse -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/]\.git([\\/]|$)' }
+
+    switch ($Type) {
+        'File' { $items = $items | Where-Object { -not $_.PSIsContainer } }
+        'Directory' { $items = $items | Where-Object { $_.PSIsContainer } }
+    }
+
+    $items | ForEach-Object {
+        Resolve-Path -LiteralPath $_.FullName -Relative -ErrorAction SilentlyContinue
+    }
+}
+
+function Resolve-FzfPath {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return $null
+    }
+
+    try {
+        (Resolve-Path -LiteralPath $Path -ErrorAction Stop).ProviderPath
+    } catch {
+        return $null
+    }
+}
+
+function Select-FzfPath {
+    param(
+        [ValidateSet('Any', 'File', 'Directory')]
+        [string]$Type = 'Any',
+
+        [string]$Prompt = 'path> '
+    )
+
+    if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+        Write-Warning 'fzf is not installed or not on PATH.'
+        return $null
+    }
+
+    $selected = Get-FzfPathCandidate -Type $Type | fzf --height 40% --layout=reverse --prompt $Prompt
+    Resolve-FzfPath $selected
+}
+
+function Copy-FzfPath {
+    $path = Select-FzfPath -Prompt 'copy path> '
+    if (-not $path) { return }
+
+    $path | Set-Clipboard
+    Write-Output "Copied: $path"
+}
+
+function Edit-FzfFile {
+    $path = Select-FzfPath -Type File -Prompt 'nvim file> '
+    if (-not $path) { return }
+
+    nvim $path
+}
+
+function Open-FzfPath {
+    $path = Select-FzfPath -Prompt 'explorer> '
+    if (-not $path) { return }
+
+    if (Test-Path -LiteralPath $path -PathType Container) {
+        explorer.exe $path
+    } else {
+        explorer.exe /select,$path
+    }
+}
+
+function Set-FzfLocation {
+    $path = Select-FzfPath -Type Directory -Prompt 'cd> '
+    if (-not $path) { return }
+
+    Set-Location -LiteralPath $path
+}
+
+function Edit-FzfGitFile {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Warning 'git is not installed or not on PATH.'
+        return
+    }
+
+    if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+        Write-Warning 'fzf is not installed or not on PATH.'
+        return
+    }
+
+    $selected = git status --short | fzf --height 40% --layout=reverse --prompt 'git file> '
+    if ([string]::IsNullOrWhiteSpace($selected)) { return }
+
+    $path = ($selected -replace '^.{3}', '')
+    if ($path -match ' -> ') {
+        $path = ($path -split ' -> ')[-1]
+    }
+
+    $resolved = Resolve-FzfPath $path
+    if ($resolved) {
+        nvim $resolved
+    }
+}
+
+function Copy-FzfHistory {
+    if (-not (Get-Command fzf -ErrorAction SilentlyContinue)) {
+        Write-Warning 'fzf is not installed or not on PATH.'
+        return
+    }
+
+    $historyPath = $null
+    try {
+        $historyPath = (Get-PSReadLineOption).HistorySavePath
+    } catch {
+    }
+
+    $history = if ($historyPath -and (Test-Path -LiteralPath $historyPath)) {
+        @(Get-Content -LiteralPath $historyPath -ErrorAction SilentlyContinue)
+    } else {
+        @(Get-History | ForEach-Object { $_.CommandLine })
+    }
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $commands = for ($i = $history.Count - 1; $i -ge 0; $i--) {
+        $line = [string]$history[$i]
+        if (-not [string]::IsNullOrWhiteSpace($line) -and $seen.Add($line)) {
+            $line
+        }
+    }
+
+    $selected = $commands | fzf --height 40% --layout=reverse --prompt 'history> '
+    if ([string]::IsNullOrWhiteSpace($selected)) { return }
+
+    $selected | Set-Clipboard
+    Write-Output 'Copied command to clipboard.'
+}
+
+Set-Alias fc Copy-FzfPath -Force
+Set-Alias fn Edit-FzfFile
+Set-Alias fe Open-FzfPath
+Set-Alias fcd Set-FzfLocation
+Set-Alias fgf Edit-FzfGitFile
+Set-Alias fh Copy-FzfHistory
 
 function nvr {
     $latest = Get-ChildItem -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -596,6 +764,164 @@ function Copy-ClipboardToSquidleader {
 }
 
 Set-Alias cbremote Copy-ClipboardToSquidleader
+
+function Sync-SquidHttp {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [string]$TargetPath = ".",
+
+        [switch]$Force,
+
+        [string]$BaseUrl = "http://192.168.1.253:8000/"
+    )
+
+    try {
+        $targetRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($TargetPath)
+    } catch {
+        throw "Invalid target folder: $TargetPath"
+    }
+
+    if (Test-Path -LiteralPath $targetRoot -PathType Leaf) {
+        throw "Target is a file, expected a folder: $targetRoot"
+    }
+
+    New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
+
+    $baseUri = [System.Uri]::new($BaseUrl.TrimEnd("/") + "/")
+
+    Write-Host "$($baseUri.AbsoluteUri) -> $targetRoot" -ForegroundColor DarkGray
+
+    $counts = @{
+        Downloaded = 0
+        Skipped = 0
+        Failed = 0
+    }
+
+    $seenDirectories = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    function ConvertFrom-SquidRelativeUriPath {
+        param([Parameter(Mandatory = $true)][string]$RelativeUriPath)
+
+        $localPath = $targetRoot
+        foreach ($encodedSegment in ($RelativeUriPath.Trim("/") -split "/")) {
+            if ([string]::IsNullOrWhiteSpace($encodedSegment)) {
+                continue
+            }
+
+            $segment = [System.Uri]::UnescapeDataString($encodedSegment)
+            if (
+                [string]::IsNullOrWhiteSpace($segment) -or
+                $segment -eq "." -or
+                $segment -eq ".." -or
+                $segment.IndexOfAny([System.IO.Path]::GetInvalidFileNameChars()) -ge 0
+            ) {
+                Write-Warning "Skipping URL with unsupported local path: $RelativeUriPath"
+                return $null
+            }
+
+            $localPath = Join-Path $localPath $segment
+        }
+
+        $localPath
+    }
+
+    function Sync-SquidHttpDirectory {
+        param([Parameter(Mandatory = $true)][System.Uri]$DirectoryUri)
+
+        if (-not $seenDirectories.Add($DirectoryUri.AbsoluteUri)) {
+            return
+        }
+
+        try {
+            $links = (Invoke-WebRequest -Uri $DirectoryUri.AbsoluteUri -TimeoutSec 30).Links
+        } catch {
+            Write-Warning "Cannot read $($DirectoryUri.AbsoluteUri): $($_.Exception.Message)"
+            $counts.Failed++
+            return
+        }
+
+        foreach ($link in $links) {
+            $href = [System.Net.WebUtility]::HtmlDecode([string]$link.href).Trim()
+            if (
+                [string]::IsNullOrWhiteSpace($href) -or
+                $href -eq "../" -or
+                $href.StartsWith("#") -or
+                $href.StartsWith("?")
+            ) {
+                continue
+            }
+
+            try {
+                $childUri = [System.Uri]::new($DirectoryUri, $href)
+            } catch {
+                continue
+            }
+
+            if (
+                $childUri.Scheme -ne $baseUri.Scheme -or
+                $childUri.Authority -ne $baseUri.Authority -or
+                -not $childUri.AbsolutePath.StartsWith($baseUri.AbsolutePath, [System.StringComparison]::OrdinalIgnoreCase)
+            ) {
+                continue
+            }
+
+            $relativeUriPath = $childUri.AbsolutePath.Substring($baseUri.AbsolutePath.Length)
+            if ([string]::IsNullOrWhiteSpace($relativeUriPath)) {
+                continue
+            }
+
+            $destination = ConvertFrom-SquidRelativeUriPath $relativeUriPath
+            if ([string]::IsNullOrWhiteSpace($destination)) {
+                $counts.Skipped++
+                continue
+            }
+
+            if ($childUri.AbsolutePath.EndsWith("/")) {
+                New-Item -ItemType Directory -Path $destination -Force | Out-Null
+                Sync-SquidHttpDirectory $childUri
+                continue
+            }
+
+            $relativeDisplayPath = ([System.Uri]::UnescapeDataString($relativeUriPath) -replace "/", "\")
+            if (-not $Force -and (Test-Path -LiteralPath $destination -PathType Leaf)) {
+                Write-Host "skip  $relativeDisplayPath" -ForegroundColor DarkGray
+                $counts.Skipped++
+                continue
+            }
+
+            New-Item -ItemType Directory -Path (Split-Path $destination -Parent) -Force | Out-Null
+
+            Write-Host "get   $relativeDisplayPath" -ForegroundColor Cyan
+            curl.exe -fL --progress-bar -o $destination $childUri.AbsoluteUri
+            if ($LASTEXITCODE -eq 0) {
+                $counts.Downloaded++
+            } else {
+                Write-Warning "Download failed: $($childUri.AbsoluteUri)"
+                Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+                $counts.Failed++
+            }
+        }
+    }
+
+    Sync-SquidHttpDirectory $baseUri
+
+    Write-Host ("Done. Downloaded {0}, skipped {1}, failed {2}." -f $counts.Downloaded, $counts.Skipped, $counts.Failed) -ForegroundColor Green
+}
+
+Set-Alias squidsync Sync-SquidHttp
+
+function sync253 {
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [string]$TargetPath = ".",
+
+        [switch]$SkipExisting
+    )
+
+    Sync-SquidHttp -TargetPath $TargetPath -BaseUrl "http://192.168.1.253:8000/" -Force:(!$SkipExisting)
+}
 
 function Apply-ClipboardGitPatch {
     $clipboard = Get-Clipboard -Raw

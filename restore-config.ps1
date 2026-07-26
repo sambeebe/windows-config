@@ -106,7 +106,7 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (AutoHotkey, tre-command)"
+    Write-Host "  7) Installs (AutoHotkey, tre-command, zoxide, fzf)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
@@ -361,7 +361,8 @@ if ($DoInstalls) {
     $installs = @(
         @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
         @{ CommandNames = @('tre.exe');                            PackageId = 'ca.duan.tre-command';   DisplayName = 'tre-command' },
-        @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' }
+        @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
+        @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' }
     )
     foreach ($pkg in $installs) {
         try {
