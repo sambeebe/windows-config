@@ -1,2 +1,0 @@
-C:\Program Files\UnzipHere\unzip.pdb
-C:\Program Files\UnzipHere\unzip.exe
