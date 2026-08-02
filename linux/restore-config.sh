@@ -20,6 +20,7 @@
 #   ./restore-config.sh
 #   ./restore-config.sh --all
 #   ./restore-config.sh --zsh
+#   ./restore-config.sh --wezterm
 #   ./restore-config.sh --zsh --no-install   # copy config only, skip installs
 
 set -uo pipefail
@@ -170,8 +171,39 @@ restore_zsh() {
     check_zsh_tools
 }
 
+# ---- section: wezterm -----------------------------------------------
+
+# Report-only, same reasoning as check_zsh_tools: wezterm is a system package
+# and installing it needs sudo.
+check_wezterm() {
+    if command -v wezterm >/dev/null 2>&1; then
+        say "$C_CYAN" "  present: $(wezterm --version 2>/dev/null | head -1)"
+    else
+        say "$C_RED" "  missing: wezterm"
+        say "$C_YELLOW" "    sudo dnf install wezterm"
+    fi
+    # The config pins default_prog to this path, so a missing zsh there means
+    # every new window fails to spawn rather than falling back to $SHELL.
+    if [[ ! -x /usr/bin/zsh ]]; then
+        say "$C_YELLOW" "  /usr/bin/zsh not found — config's default_prog points at it"
+    fi
+}
+
+restore_wezterm() {
+    say "$C_YELLOW" $'\n--- Restoring wezterm setup ---'
+    copy_out "$CONFIG_ROOT/wezterm/wezterm.lua" "$HOME/.config/wezterm/wezterm.lua"
+
+    if $NO_INSTALL; then
+        say "$C_CYAN" "  (--no-install: skipped dependency check)"
+        return
+    fi
+    say "$C_YELLOW" $'\n--- dependency check ---'
+    check_wezterm
+}
+
 # ---- argument / menu handling --------------------------------------
 DO_ZSH=false
+DO_WEZTERM=false
 DO_ALL=false
 ANY_FLAG=false
 NO_INSTALL=false
@@ -180,6 +212,7 @@ for arg in "$@"; do
     case "$arg" in
         --all)  DO_ALL=true;  ANY_FLAG=true ;;
         --zsh)  DO_ZSH=true;  ANY_FLAG=true ;;
+        --wezterm) DO_WEZTERM=true; ANY_FLAG=true ;;
         # Modifier, not a section — on its own it still shows the menu.
         --no-install) NO_INSTALL=true ;;
         -h|--help)
@@ -195,9 +228,11 @@ say "$C_MAGENTA" "=== Linux Configuration Restore ==="
 
 if $DO_ALL; then
     DO_ZSH=true
+    DO_WEZTERM=true
 elif ! $ANY_FLAG; then
     say "$C_YELLOW" $'\nSelect what to restore:'
     echo "  1) zsh setup (config, plugins, starship, dependency check)"
+    echo "  2) wezterm setup (wezterm.lua, dependency check)"
     echo "  A) All"
     echo "  Q) Quit"
     printf '%sEnter selection (e.g. '\''1'\'' or '\''A'\''): %s' "$C_CYAN" "$C_RESET"
@@ -206,24 +241,26 @@ elif ! $ANY_FLAG; then
 
     case "$choice" in
         Q|"") say "$C_YELLOW" "Cancelled."; exit 0 ;;
-        A)    DO_ZSH=true ;;
+        A)    DO_ZSH=true; DO_WEZTERM=true ;;
         *)
             IFS=',' read -ra parts <<< "$choice"
             for p in "${parts[@]}"; do
                 case "$p" in
                     1) DO_ZSH=true ;;
+                    2) DO_WEZTERM=true ;;
                     *) say "$C_RED" "Ignoring unknown selection: $p" ;;
                 esac
             done ;;
     esac
 
-    if ! $DO_ZSH; then
+    if ! $DO_ZSH && ! $DO_WEZTERM; then
         say "$C_YELLOW" "Nothing selected. Cancelled."
         exit 0
     fi
 fi
 
 $DO_ZSH && restore_zsh
+$DO_WEZTERM && restore_wezterm
 
 say "$C_MAGENTA" $'\n=== Configuration Restore Complete ==='
 say "$C_CYAN" "Restored from: $CONFIG_ROOT"
