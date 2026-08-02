@@ -152,6 +152,62 @@ if [[ -r $ZSH_PLUGINS/zsh-shift-select/zsh-shift-select.plugin.zsh ]]; then
     # bindkey -M emacs '^[z' redo
 fi
 
+# --- System clipboard ------------------------------------------------
+# ZLE's kill-ring lives inside the shell — Ctrl+U/Ctrl+X cuts are invisible
+# to the desktop. Mirror every kill into the real clipboard so the text can
+# be pasted into any other app. wl-copy forks a daemon and returns at once.
+# Fired with &! (background + disown): wl-copy takes ~170ms to hand the
+# selection to the compositor, which is a visible stall if the widget waits
+# for it. Backgrounded it costs ~4ms. Trade-off: holding a kill key on
+# autorepeat can let the copies land out of order, so the clipboard ends up
+# with one of the last few kills rather than strictly the last. Harmless at
+# human speed; not worth a lock.
+if (( $+commands[wl-copy] )); then          # Wayland
+    _clip_put() { print -rn -- "$1" | wl-copy 2>/dev/null &! }
+elif (( $+commands[xclip] )); then          # X11 fallback
+    _clip_put() { print -rn -- "$1" | xclip -selection clipboard 2>/dev/null &! }
+fi
+
+if (( $+functions[_clip_put] )); then
+    # Wrap the kill widgets: run the builtin (.name), then export $CUTBUFFER.
+    for _w in kill-whole-line kill-line backward-kill-word kill-word kill-region; do
+        eval "clip-$_w() { zle .$_w; _clip_put \"\$CUTBUFFER\" }"
+        zle -N clip-$_w
+    done
+    unset _w
+    bindkey -M emacs '^U'      clip-kill-whole-line     # cut whole line
+    bindkey -M emacs '^K'      clip-kill-line           # cut to end of line
+    bindkey -M emacs '^W'      clip-backward-kill-word
+    bindkey -M emacs '^[[3;5~' clip-kill-word           # Ctrl+Delete
+    bindkey -M emacs '^H'      clip-backward-kill-word  # Ctrl+Backspace
+
+    # Cutting a shift-select region (Ctrl+X, Delete, Backspace) — redefining
+    # the plugin's function is enough, the widget already points at it.
+    if (( $+widgets[shift-select::kill-region] )); then
+        function shift-select::kill-region() {
+            zle kill-region -w
+            _clip_put "$CUTBUFFER"
+            zle -K main
+        }
+    fi
+
+    # Copy without cutting: whole line, or the selection if one is active.
+    # On ^X^W / ^W, not ^C — ^C is the tty's intr char and raises SIGINT
+    # before ZLE ever sees it, so it can't be bound.
+    clip-copy-line() {
+        if (( REGION_ACTIVE )); then
+            zle .copy-region-as-kill
+            _clip_put "$CUTBUFFER"
+            zle -K main
+        else
+            _clip_put "$BUFFER"
+        fi
+    }
+    zle -N clip-copy-line
+    bindkey -M emacs        '^X^W' clip-copy-line
+    bindkey -M shift-select '^W'   clip-copy-line
+fi
+
 # Syntax highlighting — must be sourced LAST among plugins.
 if [[ -r $ZSH_PLUGINS/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh ]]; then
     source $ZSH_PLUGINS/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh

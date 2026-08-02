@@ -34,9 +34,10 @@ These work in zsh, bash, the Python REPL, psql, and anything else using GNU read
 | `Alt+F` / `Ctrl+→` | Forward one word |
 | `Ctrl+W` | Delete word or path component back |
 | `Alt+D` / `Ctrl+Delete` | Delete word forward |
-| `Ctrl+U` | Clear whole line |
-| `Ctrl+K` | Kill from cursor to end of line |
+| `Ctrl+U` | Cut whole line |
+| `Ctrl+K` | Cut from cursor to end of line |
 | `Ctrl+Y` | Yank back what you just killed (paste-within-shell) |
+| `Ctrl+X Ctrl+W` | Copy the line (or the active selection) to the system clipboard, without cutting |
 | `Ctrl+L` | Clear screen |
 | `Ctrl+R` | Fuzzy history search (fzf) |
 | `↑` / `↓` | Prefix-search history — type `git `, then ↑ cycles only git commands |
@@ -49,6 +50,8 @@ These work in zsh, bash, the Python REPL, psql, and anything else using GNU read
 **fast-syntax-highlighting** — Commands turn green when valid, red when not. Strings, paths, and flags are colored as you type. Catches typos before Enter.
 
 **zsh-shift-select** — Brings GUI-style text selection to the prompt: Shift+arrows / Shift+Home / Shift+End extend a selection, Delete or Backspace cuts it. `.zshrc` layers three Windows-muscle-memory bindings on top — `Ctrl+X Ctrl+A` select-all, `Ctrl+V` paste from the kill-ring, `Ctrl+Z` undo. This is the one plugin that contradicts the "terminal owns selection" split above; it's deliberate.
+
+**System clipboard** — ZLE's kill-ring is internal to the shell, so a cut is normally invisible to the rest of the desktop. `.zshrc` wraps the kill widgets to mirror `$CUTBUFFER` into the real clipboard via `wl-copy` (Wayland; `xclip` fallback on X11). So `Ctrl+U`, `Ctrl+K`, `Ctrl+W`, `Ctrl+Delete`, `Ctrl+Backspace` and cutting a shift-select region all land in the system clipboard, pasteable anywhere with `Ctrl+V`. `Ctrl+X Ctrl+W` copies without cutting (`Ctrl+W` alone while a selection is active). Copy is *not* on `Ctrl+C` — that's the tty's `intr` character and raises SIGINT before ZLE sees the key, so it can't be bound.
 
 **fzf** (`Ctrl+R`, `Ctrl+T`, `Alt+C`)
 - `Ctrl+R` — fuzzy history (way better than ↑↑↑)
