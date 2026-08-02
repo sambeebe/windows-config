@@ -1,0 +1,60 @@
+# ~/.config/starship.toml — see https://starship.rs/config
+# Two-line prompt with git status, language versions, and a ❯ on its own line.
+
+add_newline = true
+command_timeout = 1000
+
+format = """
+[](fg:#3a3a3a)\
+$directory\
+[](fg:#3a3a3a bg:#444444)\
+$git_branch$git_status\
+[](fg:#444444)\
+$fill\
+$cmd_duration\
+$time
+$character"""
+
+[fill]
+symbol = " "
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold green)"
+
+[directory]
+style = "bold fg:#ffffff bg:#3a3a3a"
+format = "[ $path ]($style)"
+truncation_length = 4
+truncate_to_repo = true
+read_only = " 󰌾"
+
+[git_branch]
+symbol = " "
+style = "fg:#ffffff bg:#444444"
+format = "[ $symbol$branch ]($style)"
+
+[git_status]
+style = "fg:#ffd866 bg:#444444"
+format = '[$all_status$ahead_behind ]($style)'
+
+[cmd_duration]
+min_time = 2_000
+style = "yellow"
+format = "[took $duration ]($style)"
+
+[time]
+disabled = false
+style = "bright-black"
+format = "[$time]($style)"
+time_format = "%H:%M:%S"
+
+[python]
+symbol = " "
+[nodejs]
+symbol = " "
+[rust]
+symbol = " "
+[golang]
+symbol = " "
