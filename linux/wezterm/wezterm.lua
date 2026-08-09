@@ -15,6 +15,9 @@ config.tab_bar_at_bottom = true
 -- Behavior
 config.scrollback_lines = 10003
 config.enable_scroll_bar = false
+-- Scroll speed. Full-screen apps (pagers, vim, ...) that don't grab the mouse
+-- get wheel notches translated into cursor keys; default is 3 lines per notch.
+config.alternate_buffer_wheel_scroll_speed = 1
 config.audible_bell = "Disabled"
 -- No desktop toasts: neither from programs (OSC 9 / OSC 777) nor from
 -- WezTerm's own update checker.
@@ -77,13 +80,27 @@ config.keys = {
 	{ key = "End",        mods = "SHIFT",      action = wezterm.action.SendString("\x1b[1;2F") },
 }
 
--- -- Mouse bindings
--- config.mouse_bindings = {
--- 	{
--- 		event = { Up = { streak = 4, button = "Left" } },
--- 		mods = "NONE",
--- 		action = wezterm.action.CompleteSelection("ClipboardAndPrimarySelection"),
--- 	},
--- }
+-- Mouse bindings
+-- Scrollback scrolling: the default (ScrollByCurrentEventWheelDelta) moves a
+-- full 3-line notch. Pin it to 1 line per notch instead. These only apply on
+-- the primary screen; alt_screen defaults to false, so full-screen apps keep
+-- using alternate_buffer_wheel_scroll_speed above.
+config.mouse_bindings = {
+	{
+		event = { Down = { streak = 1, button = { WheelUp = 1 } } },
+		mods = "NONE",
+		action = wezterm.action.ScrollByLine(-1),
+	},
+	{
+		event = { Down = { streak = 1, button = { WheelDown = 1 } } },
+		mods = "NONE",
+		action = wezterm.action.ScrollByLine(1),
+	},
+	-- {
+	-- 	event = { Up = { streak = 4, button = "Left" } },
+	-- 	mods = "NONE",
+	-- 	action = wezterm.action.CompleteSelection("ClipboardAndPrimarySelection"),
+	-- },
+}
 
 return config
