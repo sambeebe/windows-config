@@ -8,7 +8,7 @@
 
     By default shows an interactive menu to pick which sections to restore. Use -All to
     restore everything non-interactively, or pass any combination of -Profile, -Nvim,
-    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs to restore specific sections.
+    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs, -Tweaks to restore specific sections.
 .EXAMPLE
     .\restore-config.ps1
     .\restore-config.ps1 -All
@@ -27,7 +27,8 @@ param(
     [switch]$Installs,
     [switch]$Fonts,
     [switch]$Ffmpeg,
-    [switch]$PowerToysInstall
+    [switch]$PowerToysInstall,
+    [switch]$Tweaks
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
@@ -83,10 +84,10 @@ function Install-WingetPackageIfMissing {
 }
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks
 if ($All) {
     # -All intentionally excludes PowerToysInstall (heavy update); pass it explicitly when wanted.
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false; $DoTweaks = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
@@ -98,6 +99,7 @@ if ($All) {
     $DoFonts = [bool]$Fonts
     $DoFfmpeg = [bool]$Ffmpeg
     $DoPowerToysInstall = [bool]$PowerToysInstall
+    $DoTweaks = [bool]$Tweaks
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
@@ -110,6 +112,7 @@ if ($All) {
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
+    Write-Host " 11) Windows tweaks (dark mode, no animations, taskbar End Task)"
     Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -120,9 +123,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false; $DoTweaks = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoTweaks = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -137,12 +140,13 @@ if ($All) {
                 '8'  { $DoFonts = $true }
                 '9'  { $DoFfmpeg = $true }
                 '10' { $DoPowerToysInstall = $true }
+                '11' { $DoTweaks = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall -or $DoTweaks)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -358,13 +362,15 @@ if ($DoInstalls) {
     Write-Host "`n--- Installing Packages ---" -ForegroundColor Yellow
     # PowerToys is intentionally NOT in this bundle — its update is heavy.
     # Use option 10 / -PowerToysInstall to install or update it.
-    $installs = @(
+    # Note: don't name this $Installs — PowerShell variable names are case-insensitive,
+    # so it would collide with the [switch]$Installs parameter and fail to convert.
+    $InstallList = @(
         @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
-        @{ CommandNames = @('tre.exe');                            PackageId = 'ca.duan.tre-command';   DisplayName = 'tre-command' },
+        @{ CommandNames = @('tre.exe');                            PackageId = 'duan.tre';              DisplayName = 'tre-command' },
         @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
         @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' }
     )
-    foreach ($pkg in $installs) {
+    foreach ($pkg in $InstallList) {
         try {
             Install-WingetPackageIfMissing -CommandNames $pkg.CommandNames -PackageId $pkg.PackageId -DisplayName $pkg.DisplayName -ErrorAction Continue
         } catch {
@@ -446,6 +452,83 @@ if ($DoPowerToysInstall) {
     } catch {
         Write-Host "Skipping PowerToys: $($_.Exception.Message)" -ForegroundColor Red
     }
+}
+
+# 11. Windows tweaks: dark mode, animations off, taskbar "End Task"
+if ($DoTweaks) {
+    Write-Host "`n--- Applying Windows Tweaks ---" -ForegroundColor Yellow
+
+    function Set-RegistryValue {
+        param(
+            [Parameter(Mandatory=$true)][string]$Path,
+            [Parameter(Mandatory=$true)][string]$Name,
+            [Parameter(Mandatory=$true)]$Value,
+            [ValidateSet('DWord','String')][string]$Type = 'DWord',
+            [string]$Label
+        )
+        if (-not $Label) { $Label = $Name }
+        try {
+            if (!(Test-Path $Path)) { New-Item -Path $Path -Force | Out-Null }
+            New-ItemProperty -Path $Path -Name $Name -Value $Value -PropertyType $Type -Force | Out-Null
+            Write-Host "  $Label" -ForegroundColor Green
+        } catch {
+            Write-Host "  Failed: $Label - $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    # Win32 helpers: apply the animation setting live and tell running apps the theme changed.
+    if (-not ('WinTweakNative' -as [type])) {
+        try {
+            Add-Type -Namespace '' -Name 'WinTweakNative' -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+public static extern bool SystemParametersInfo(uint uiAction, uint uiParam, System.IntPtr pvParam, uint fWinIni);
+
+[System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Auto)]
+public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint Msg, System.IntPtr wParam, string lParam, uint fuFlags, uint uTimeout, out System.UIntPtr lpdwResult);
+'@ -ErrorAction Stop
+        } catch {
+            Write-Host "  Note: could not load Win32 helpers, applying registry values only." -ForegroundColor Yellow
+        }
+    }
+
+    # --- Dark mode (apps + system chrome) ---
+    Write-Host "`n  Dark mode:" -ForegroundColor Cyan
+    $PersonalizeKey = "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+    Set-RegistryValue -Path $PersonalizeKey -Name 'AppsUseLightTheme'   -Value 0 -Label 'Apps set to dark'
+    Set-RegistryValue -Path $PersonalizeKey -Name 'SystemUsesLightTheme' -Value 0 -Label 'Taskbar/Start set to dark'
+
+    # --- Animation effects off ---
+    Write-Host "`n  Animation effects:" -ForegroundColor Cyan
+    Set-RegistryValue -Path "HKCU:\Control Panel\Desktop\WindowMetrics" -Name 'MinAnimate' -Value '0' -Type String -Label 'Minimize/maximize animation off'
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAnimations' -Value 0 -Label 'Taskbar animations off'
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 3 -Label 'Visual effects set to custom'
+
+    if ('WinTweakNative' -as [type]) {
+        # SPI_SETCLIENTAREAANIMATION with pvParam = 0 is the Settings > Accessibility >
+        # Visual effects > "Animation effects" toggle, off. SPIF_UPDATEINIFILE|SPIF_SENDCHANGE = 3.
+        try {
+            [void][WinTweakNative]::SystemParametersInfo(0x1043, 0, [System.IntPtr]::Zero, 3)
+            Write-Host "  Accessibility animation effects off" -ForegroundColor Green
+        } catch {
+            Write-Host "  Failed: accessibility animation toggle - $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    # --- Taskbar right-click "End task" ---
+    Write-Host "`n  Taskbar End Task:" -ForegroundColor Cyan
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings" -Name 'TaskbarEndTask' -Value 1 -Label 'End task enabled in taskbar right-click menu'
+
+    # Nudge running apps to pick up the new theme.
+    if ('WinTweakNative' -as [type]) {
+        $Result = [System.UIntPtr]::Zero
+        try {
+            # HWND_BROADCAST = 0xFFFF, WM_SETTINGCHANGE = 0x1A, SMTO_ABORTIFHUNG = 0x2
+            [void][WinTweakNative]::SendMessageTimeout([System.IntPtr]0xFFFF, 0x1A, [System.IntPtr]::Zero, 'ImmersiveColorSet', 2, 1000, [ref]$Result)
+        } catch { }
+    }
+
+    Write-Host "`n  Applied. Restart Explorer (or sign out) for the taskbar changes to show." -ForegroundColor Yellow
+    Write-Host "  Restart Explorer now with: Stop-Process -Name explorer -Force" -ForegroundColor Cyan
 }
 
 Write-Host "`n=== Configuration Restore Complete ===" -ForegroundColor Magenta
