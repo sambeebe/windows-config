@@ -112,7 +112,7 @@ if ($All) {
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
-    Write-Host " 11) Windows tweaks (dark mode, no animations, taskbar End Task)"
+    Write-Host " 11) Windows tweaks (dark mode, animation effects off, taskbar End Task)"
     Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -454,7 +454,7 @@ if ($DoPowerToysInstall) {
     }
 }
 
-# 11. Windows tweaks: dark mode, animations off, taskbar "End Task"
+# 11. Windows tweaks: dark mode, animation effects off, taskbar "End Task"
 if ($DoTweaks) {
     Write-Host "`n--- Applying Windows Tweaks ---" -ForegroundColor Yellow
 
@@ -497,20 +497,36 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
     Set-RegistryValue -Path $PersonalizeKey -Name 'AppsUseLightTheme'   -Value 0 -Label 'Apps set to dark'
     Set-RegistryValue -Path $PersonalizeKey -Name 'SystemUsesLightTheme' -Value 0 -Label 'Taskbar/Start set to dark'
 
-    # --- Animation effects off ---
+    # --- Animation effects off (Settings > Accessibility > Visual effects) ---
+    # This toggle and nothing else: it leaves MinAnimate, TaskbarAnimations and the
+    # Performance Options preset (VisualFXSetting) alone, exactly as Windows does.
     Write-Host "`n  Animation effects:" -ForegroundColor Cyan
-    Set-RegistryValue -Path "HKCU:\Control Panel\Desktop\WindowMetrics" -Name 'MinAnimate' -Value '0' -Type String -Label 'Minimize/maximize animation off'
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name 'TaskbarAnimations' -Value 0 -Label 'Taskbar animations off'
-    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" -Name 'VisualFXSetting' -Value 3 -Label 'Visual effects set to custom'
-
+    $AnimationSet = $false
     if ('WinTweakNative' -as [type]) {
-        # SPI_SETCLIENTAREAANIMATION with pvParam = 0 is the Settings > Accessibility >
-        # Visual effects > "Animation effects" toggle, off. SPIF_UPDATEINIFILE|SPIF_SENDCHANGE = 3.
+        # SPI_SETCLIENTAREAANIMATION (0x1043) with pvParam = 0 is that toggle, off.
+        # SPIF_UPDATEINIFILE|SPIF_SENDCHANGE = 3 persists it and notifies running apps.
         try {
-            [void][WinTweakNative]::SystemParametersInfo(0x1043, 0, [System.IntPtr]::Zero, 3)
-            Write-Host "  Accessibility animation effects off" -ForegroundColor Green
+            $AnimationSet = [WinTweakNative]::SystemParametersInfo(0x1043, 0, [System.IntPtr]::Zero, 3)
+            if ($AnimationSet) { Write-Host "  Animation effects off" -ForegroundColor Green }
         } catch {
-            Write-Host "  Failed: accessibility animation toggle - $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "  SystemParametersInfo failed: $($_.Exception.Message)" -ForegroundColor Yellow
+        }
+    }
+    if (-not $AnimationSet) {
+        # Fallback: the toggle is backed by bit 0x02 of byte 4 of UserPreferencesMask.
+        # Takes effect at next sign-in rather than immediately.
+        try {
+            $DesktopKey = "HKCU:\Control Panel\Desktop"
+            $Mask = (Get-ItemProperty -Path $DesktopKey -Name 'UserPreferencesMask' -ErrorAction Stop).UserPreferencesMask
+            if ($Mask.Count -ge 5) {
+                $Mask[4] = $Mask[4] -band 0xFD
+                Set-ItemProperty -Path $DesktopKey -Name 'UserPreferencesMask' -Value $Mask -Force
+                Write-Host "  Animation effects off (registry; applies at next sign-in)" -ForegroundColor Green
+            } else {
+                Write-Host "  Failed: UserPreferencesMask is shorter than expected" -ForegroundColor Red
+            }
+        } catch {
+            Write-Host "  Failed: animation effects - $($_.Exception.Message)" -ForegroundColor Red
         }
     }
 
