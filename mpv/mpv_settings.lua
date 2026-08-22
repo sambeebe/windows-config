@@ -239,6 +239,34 @@ mp.add_key_binding("H", "jump_back_48", function()
 end, { repeatable = true })
 
 
+-- Show the current frame number
+function show_frame_number()
+	local frame = mp.get_property_number("estimated-frame-number")
+
+	if not frame then
+		local pos = mp.get_property_number("time-pos")
+		local fps = mp.get_property_number("container-fps")
+
+		if not pos or not fps or fps <= 0 then
+			mp.osd_message("Frame number not available")
+			return
+		end
+
+		frame = math.floor(pos * fps + 0.5)
+	end
+
+	local total = mp.get_property_number("estimated-frame-count")
+
+	if total then
+		mp.osd_message(string.format("Frame %d / %d", frame, total), 2)
+	else
+		mp.osd_message(string.format("Frame %d", frame), 2)
+	end
+end
+
+mp.add_key_binding("n", "show_frame_number", show_frame_number)
+
+
 -- Jump to first / last frame
 function go_to_first_frame()
 	mp.commandv("seek", "0", "absolute+exact")

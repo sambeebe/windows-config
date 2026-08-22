@@ -556,12 +556,64 @@ function Copy-FzfHistory {
     Write-Output 'Copied command to clipboard.'
 }
 
+function Show-SixelImage {
+    param(
+        [Parameter(Mandatory=$true, Position=0, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
+        [Alias('FullName')]
+        [string]$Path,
+
+        [Parameter(Position=1)]
+        [AllowEmptyString()]
+        [string]$Resize = '600x',
+
+        [switch]$NoResize
+    )
+
+    process {
+        if (-not (Get-Command magick -ErrorAction SilentlyContinue)) {
+            Write-Warning 'magick is not installed or not on PATH.'
+            return
+        }
+
+        $resolved = Resolve-FzfPath $Path
+        if (-not $resolved) {
+            Write-Warning "Image not found: $Path"
+            return
+        }
+
+        $magickArgs = @($resolved)
+        if (-not $NoResize -and -not [string]::IsNullOrWhiteSpace($Resize)) {
+            $magickArgs += @('-resize', $Resize)
+        }
+        $magickArgs += 'sixel:-'
+
+        & magick @magickArgs
+    }
+}
+
+function Show-FzfSixelImage {
+    param(
+        [Parameter(Position=0)]
+        [AllowEmptyString()]
+        [string]$Resize = '600x',
+
+        [switch]$NoResize
+    )
+
+    $path = Select-FzfPath -Type File -Prompt 'sixel image> '
+    if (-not $path) { return }
+
+    Show-SixelImage -Path $path -Resize $Resize -NoResize:$NoResize
+}
+
 Set-Alias fc Copy-FzfPath -Force
 Set-Alias fn Edit-FzfFile
 Set-Alias fe Open-FzfPath
 Set-Alias fcd Set-FzfLocation
 Set-Alias fgf Edit-FzfGitFile
 Set-Alias fh Copy-FzfHistory
+Set-Alias six Show-SixelImage
+Set-Alias fsix Show-FzfSixelImage
 
 function nvr {
     $latest = Get-ChildItem -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1

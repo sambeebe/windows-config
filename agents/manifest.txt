@@ -1,0 +1,38 @@
+# Config files for CLI coding agents, shared by the Windows and Linux
+# sync/restore scripts.
+#
+# Format:  <tool>|<path under agents/>|<path relative to the home directory>
+#
+# - Every entry is optional. A source that does not exist is skipped rather
+#   than reported as an error, so the same manifest works on a machine that
+#   only has some of these tools installed.
+# - Files and directories are both allowed; directories are copied whole.
+# - This is an allowlist on purpose. Credentials and session state
+#   (~/.claude/.credentials.json, ~/.codex/auth.json, sessions/, history.jsonl,
+#   caches) must never be listed here — this repo is public.
+# - Home-relative paths use forward slashes on both platforms. These tools use
+#   the same locations under $HOME / %USERPROFILE% on Windows and Linux.
+#
+# To track another tool, add a line and re-run the sync script.
+
+# --- Claude Code -----------------------------------------------------
+claude|claude/settings.json|.claude/settings.json
+claude|claude/CLAUDE.md|.claude/CLAUDE.md
+claude|claude/keybindings.json|.claude/keybindings.json
+claude|claude/commands|.claude/commands
+claude|claude/agents|.claude/agents
+claude|claude/skills|.claude/skills
+
+# --- Codex -----------------------------------------------------------
+# config.toml is synced with its [projects.*] trust entries stripped — those are
+# absolute paths from one machine. See README.md.
+codex|codex/config.toml|.codex/config.toml
+codex|codex/AGENTS.md|.codex/AGENTS.md
+codex|codex/rules|.codex/rules
+codex|codex/memories|.codex/memories
+
+# --- opencode --------------------------------------------------------
+opencode|opencode/opencode.json|.config/opencode/opencode.json
+opencode|opencode/AGENTS.md|.config/opencode/AGENTS.md
+opencode|opencode/agent|.config/opencode/agent
+opencode|opencode/command|.config/opencode/command

@@ -21,6 +21,7 @@
 #   ./restore-config.sh --all
 #   ./restore-config.sh --zsh
 #   ./restore-config.sh --wezterm
+#   ./restore-config.sh --agents
 #   ./restore-config.sh --zsh --no-install   # copy config only, skip installs
 
 set -uo pipefail
@@ -28,6 +29,9 @@ set -uo pipefail
 # Repo root for the Linux config = directory this script lives in.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_ROOT="$SCRIPT_DIR"
+
+# Agent configs are shared with Windows, so they live one level up in the repo.
+AGENTS_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)/agents"
 
 # ---- colors ---------------------------------------------------------
 if [[ -t 1 ]]; then
@@ -201,9 +205,53 @@ restore_wezterm() {
     check_wezterm
 }
 
+# ---- section: agent configs -----------------------------------------
+# Entries come from agents/manifest.txt: <tool>|<path under agents/>|<path under $HOME>
+read_agent_manifest() {
+    if [[ ! -f "$AGENTS_ROOT/manifest.txt" ]]; then
+        say "$C_RED" "  manifest not found: $AGENTS_ROOT/manifest.txt"
+        return 1
+    fi
+    grep -vE '^[[:space:]]*(#|$)' "$AGENTS_ROOT/manifest.txt"
+}
+
+restore_agents() {
+    say "$C_YELLOW" $'\n--- Restoring agent configs ---'
+    local tool repo_rel home_rel src dst backup last_tool=''
+    while IFS='|' read -r tool repo_rel home_rel; do
+        [[ -n "${home_rel:-}" ]] || continue
+        if [[ "$tool" != "$last_tool" ]]; then
+            say "$C_CYAN" "  $tool"
+            last_tool="$tool"
+        fi
+        src="$AGENTS_ROOT/$repo_rel"
+        dst="$HOME/$home_rel"
+        if [[ ! -e "$src" ]]; then
+            say "$C_CYAN" "    not in repo, skipped: $repo_rel"
+            continue
+        fi
+        if [[ -e "$dst" ]] && diff -rq "$src" "$dst" >/dev/null 2>&1; then
+            say "$C_CYAN" "    unchanged: ~/$home_rel"
+            continue
+        fi
+        mkdir -p "$(dirname "$dst")"
+        if [[ -e "$dst" ]]; then
+            # These files are hand-edited and the live copy can hold machine-specific
+            # settings this repo does not track, so never overwrite without a copy.
+            backup="$dst.bak.$(date +%Y%m%d%H%M%S)"
+            cp -a "$dst" "$backup"
+            say "$C_YELLOW" "    backed up: ~/$home_rel -> $(basename "$backup")"
+            rm -rf "$dst"
+        fi
+        cp -a "$src" "$dst"
+        say "$C_GREEN" "    restored: ~/$home_rel"
+    done < <(read_agent_manifest)
+}
+
 # ---- argument / menu handling --------------------------------------
 DO_ZSH=false
 DO_WEZTERM=false
+DO_AGENTS=false
 DO_ALL=false
 ANY_FLAG=false
 NO_INSTALL=false
@@ -213,6 +261,7 @@ for arg in "$@"; do
         --all)  DO_ALL=true;  ANY_FLAG=true ;;
         --zsh)  DO_ZSH=true;  ANY_FLAG=true ;;
         --wezterm) DO_WEZTERM=true; ANY_FLAG=true ;;
+        --agents)  DO_AGENTS=true;  ANY_FLAG=true ;;
         # Modifier, not a section — on its own it still shows the menu.
         --no-install) NO_INSTALL=true ;;
         -h|--help)
@@ -229,10 +278,12 @@ say "$C_MAGENTA" "=== Linux Configuration Restore ==="
 if $DO_ALL; then
     DO_ZSH=true
     DO_WEZTERM=true
+    DO_AGENTS=true
 elif ! $ANY_FLAG; then
     say "$C_YELLOW" $'\nSelect what to restore:'
     echo "  1) zsh setup (config, plugins, starship, dependency check)"
     echo "  2) wezterm setup (wezterm.lua, dependency check)"
+    echo "  3) agent configs (Claude Code, Codex, opencode)"
     echo "  A) All"
     echo "  Q) Quit"
     printf '%sEnter selection (e.g. '\''1'\'' or '\''A'\''): %s' "$C_CYAN" "$C_RESET"
@@ -241,19 +292,20 @@ elif ! $ANY_FLAG; then
 
     case "$choice" in
         Q|"") say "$C_YELLOW" "Cancelled."; exit 0 ;;
-        A)    DO_ZSH=true; DO_WEZTERM=true ;;
+        A)    DO_ZSH=true; DO_WEZTERM=true; DO_AGENTS=true ;;
         *)
             IFS=',' read -ra parts <<< "$choice"
             for p in "${parts[@]}"; do
                 case "$p" in
                     1) DO_ZSH=true ;;
                     2) DO_WEZTERM=true ;;
+                    3) DO_AGENTS=true ;;
                     *) say "$C_RED" "Ignoring unknown selection: $p" ;;
                 esac
             done ;;
     esac
 
-    if ! $DO_ZSH && ! $DO_WEZTERM; then
+    if ! $DO_ZSH && ! $DO_WEZTERM && ! $DO_AGENTS; then
         say "$C_YELLOW" "Nothing selected. Cancelled."
         exit 0
     fi
@@ -261,6 +313,7 @@ fi
 
 $DO_ZSH && restore_zsh
 $DO_WEZTERM && restore_wezterm
+$DO_AGENTS && restore_agents
 
 say "$C_MAGENTA" $'\n=== Configuration Restore Complete ==='
 say "$C_CYAN" "Restored from: $CONFIG_ROOT"

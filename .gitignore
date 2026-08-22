@@ -1,1 +1,9 @@
 .claude
+
+# Backstop for agents/ — the manifest is an allowlist so these should never be
+# copied in, but this repo is public and a stray copy must not be committable.
+agents/**/.credentials.json
+agents/**/auth.json
+agents/**/*.sqlite*
+agents/**/history.jsonl
+agents/**/sessions/

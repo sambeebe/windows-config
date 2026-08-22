@@ -8,7 +8,7 @@
 
     By default shows an interactive menu to pick which sections to restore. Use -All to
     restore everything non-interactively, or pass any combination of -Profile, -Nvim,
-    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs, -Tweaks to restore specific sections.
+    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs, -Tweaks, -Agents to restore specific sections.
 .EXAMPLE
     .\restore-config.ps1
     .\restore-config.ps1 -All
@@ -28,7 +28,8 @@ param(
     [switch]$Fonts,
     [switch]$Ffmpeg,
     [switch]$PowerToysInstall,
-    [switch]$Tweaks
+    [switch]$Tweaks,
+    [switch]$Agents
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
@@ -84,10 +85,10 @@ function Install-WingetPackageIfMissing {
 }
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks -or $Agents
 if ($All) {
     # -All intentionally excludes PowerToysInstall (heavy update); pass it explicitly when wanted.
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false; $DoTweaks = $true
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false; $DoTweaks = $true; $DoAgents = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
@@ -100,6 +101,7 @@ if ($All) {
     $DoFfmpeg = [bool]$Ffmpeg
     $DoPowerToysInstall = [bool]$PowerToysInstall
     $DoTweaks = [bool]$Tweaks
+    $DoAgents = [bool]$Agents
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
@@ -113,6 +115,7 @@ if ($All) {
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
     Write-Host " 11) Windows tweaks (dark mode, animation effects off, taskbar End Task)"
+    Write-Host " 12) Agent configs (Claude Code, Codex, opencode)"
     Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -123,9 +126,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false; $DoTweaks = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false; $DoTweaks = $false; $DoAgents = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoTweaks = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoTweaks = $true; $DoAgents = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -141,12 +144,13 @@ if ($All) {
                 '9'  { $DoFfmpeg = $true }
                 '10' { $DoPowerToysInstall = $true }
                 '11' { $DoTweaks = $true }
+                '12' { $DoAgents = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall -or $DoTweaks)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall -or $DoTweaks -or $DoAgents)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -545,6 +549,89 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
 
     Write-Host "`n  Applied. Restart Explorer (or sign out) for the taskbar changes to show." -ForegroundColor Yellow
     Write-Host "  Restart Explorer now with: Stop-Process -Name explorer -Force" -ForegroundColor Cyan
+}
+
+# 12. Restore CLI agent configs (Claude Code, Codex, opencode, ...)
+if ($DoAgents) {
+    Write-Host "`n--- Restoring Agent Configs ---" -ForegroundColor Yellow
+    $AgentsRoot = Join-Path $ConfigRoot "agents"
+    $ManifestPath = Join-Path $AgentsRoot "manifest.txt"
+
+    # Equivalent of the Linux script's `diff -rq`: identical entries are left alone so
+    # repeated restores do not pile up backup copies.
+    function Test-ContentEqual {
+        param([Parameter(Mandatory=$true)][string]$Left, [Parameter(Mandatory=$true)][string]$Right)
+        if (!(Test-Path $Left) -or !(Test-Path $Right)) { return $false }
+        $LeftIsDir = Test-Path $Left -PathType Container
+        if ($LeftIsDir -ne (Test-Path $Right -PathType Container)) { return $false }
+        if (-not $LeftIsDir) { return (Get-FileHash $Left).Hash -eq (Get-FileHash $Right).Hash }
+
+        $LeftRoot  = (Resolve-Path $Left).Path.TrimEnd('\')
+        $RightRoot = (Resolve-Path $Right).Path.TrimEnd('\')
+        $LeftFiles  = @(Get-ChildItem -LiteralPath $LeftRoot  -Recurse -File -Force | Sort-Object FullName)
+        $RightFiles = @(Get-ChildItem -LiteralPath $RightRoot -Recurse -File -Force | Sort-Object FullName)
+        if ($LeftFiles.Count -ne $RightFiles.Count) { return $false }
+        for ($i = 0; $i -lt $LeftFiles.Count; $i++) {
+            if ($LeftFiles[$i].FullName.Substring($LeftRoot.Length) -ne $RightFiles[$i].FullName.Substring($RightRoot.Length)) { return $false }
+            if ((Get-FileHash $LeftFiles[$i].FullName).Hash -ne (Get-FileHash $RightFiles[$i].FullName).Hash) { return $false }
+        }
+        return $true
+    }
+
+    if (!(Test-Path $ManifestPath)) {
+        Write-Host "Warning: manifest not found at $ManifestPath" -ForegroundColor Red
+    } else {
+        $LastTool = ''
+        foreach ($Line in Get-Content -LiteralPath $ManifestPath) {
+            $Trimmed = $Line.Trim()
+            if (-not $Trimmed -or $Trimmed.StartsWith('#')) { continue }
+
+            $Fields = $Trimmed -split '\|'
+            if ($Fields.Count -ne 3) {
+                Write-Host "Skipping malformed manifest line: $Trimmed" -ForegroundColor Red
+                continue
+            }
+            $Tool, $RepoRel, $HomeRel = $Fields
+
+            if ($Tool -ne $LastTool) {
+                Write-Host "`n  $Tool" -ForegroundColor Cyan
+                $LastTool = $Tool
+            }
+
+            $HomeRelWin = $HomeRel -replace '/', '\'
+            $Source = Join-Path $AgentsRoot ($RepoRel -replace '/', '\')
+            $Target = Join-Path $env:USERPROFILE $HomeRelWin
+
+            if (!(Test-Path $Source)) {
+                Write-Host "    not in repo, skipped: $RepoRel" -ForegroundColor DarkGray
+                continue
+            }
+
+            try {
+                if (Test-ContentEqual -Left $Source -Right $Target) {
+                    Write-Host "    unchanged: ~\$HomeRelWin" -ForegroundColor DarkGray
+                    continue
+                }
+
+                $TargetParent = Split-Path $Target -Parent
+                if (!(Test-Path $TargetParent)) { New-Item -ItemType Directory -Path $TargetParent -Force | Out-Null }
+
+                if (Test-Path $Target) {
+                    # These files are hand-edited and the live copy can hold machine-specific
+                    # settings this repo does not track, so never overwrite without a copy.
+                    $Backup = "$Target.bak.$(Get-Date -Format yyyyMMddHHmmss)"
+                    Copy-Item $Target $Backup -Recurse -Force
+                    Write-Host "    backed up: ~\$HomeRelWin -> $(Split-Path $Backup -Leaf)" -ForegroundColor Yellow
+                    Remove-Item $Target -Recurse -Force
+                }
+
+                Copy-Item $Source $Target -Recurse -Force
+                Write-Host "    restored: ~\$HomeRelWin" -ForegroundColor Green
+            } catch {
+                Write-Host "    failed: ~\$HomeRelWin - $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
+    }
 }
 
 Write-Host "`n=== Configuration Restore Complete ===" -ForegroundColor Magenta
