@@ -8,7 +8,7 @@
 
     By default shows an interactive menu to pick which sections to restore. Use -All to
     restore everything non-interactively, or pass any combination of -Profile, -Nvim,
-    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs, -Tweaks to restore specific sections.
+    -WinTerm, -Ahk, -Mpv, -PowerToys, -Installs, -Tweaks, -Opencode to restore specific sections.
 .EXAMPLE
     .\restore-config.ps1
     .\restore-config.ps1 -All
@@ -28,7 +28,8 @@ param(
     [switch]$Fonts,
     [switch]$Ffmpeg,
     [switch]$PowerToysInstall,
-    [switch]$Tweaks
+    [switch]$Tweaks,
+    [switch]$Opencode
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
@@ -84,10 +85,10 @@ function Install-WingetPackageIfMissing {
 }
 
 # Decide which sections to run
-$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks
+$AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks -or $Opencode
 if ($All) {
     # -All intentionally excludes PowerToysInstall (heavy update); pass it explicitly when wanted.
-    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false; $DoTweaks = $true
+    $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoPowerToysInstall = $false; $DoTweaks = $true; $DoOpencode = $true
 } elseif ($AnySwitch) {
     $DoProfile = [bool]$Profile
     $DoNvim = [bool]$Nvim
@@ -100,6 +101,7 @@ if ($All) {
     $DoFfmpeg = [bool]$Ffmpeg
     $DoPowerToysInstall = [bool]$PowerToysInstall
     $DoTweaks = [bool]$Tweaks
+    $DoOpencode = [bool]$Opencode
 } else {
     Write-Host "`nSelect what to restore:" -ForegroundColor Yellow
     Write-Host "  1) PowerShell profile"
@@ -113,6 +115,7 @@ if ($All) {
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
     Write-Host " 11) Windows tweaks (dark mode, animation effects off, taskbar End Task)"
+    Write-Host " 12) opencode config (~\.config\opencode)"
     Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
     Write-Host "Enter selection (e.g. '1,3' or 'A'):" -ForegroundColor Cyan -NoNewline
@@ -123,9 +126,9 @@ if ($All) {
         return
     }
 
-    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false; $DoTweaks = $false
+    $DoProfile = $false; $DoNvim = $false; $DoWinTerm = $false; $DoAhk = $false; $DoMpv = $false; $DoPowerToys = $false; $DoInstalls = $false; $DoFonts = $false; $DoFfmpeg = $false; $DoPowerToysInstall = $false; $DoTweaks = $false; $DoOpencode = $false
     if ($Choice -eq 'A') {
-        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoTweaks = $true
+        $DoProfile = $true; $DoNvim = $true; $DoWinTerm = $true; $DoAhk = $true; $DoMpv = $true; $DoPowerToys = $true; $DoInstalls = $true; $DoFonts = $true; $DoFfmpeg = $true; $DoTweaks = $true; $DoOpencode = $true
     } else {
         $Parts = $Choice -split '[,\s]+' | Where-Object { $_ }
         foreach ($P in $Parts) {
@@ -141,12 +144,13 @@ if ($All) {
                 '9'  { $DoFfmpeg = $true }
                 '10' { $DoPowerToysInstall = $true }
                 '11' { $DoTweaks = $true }
+                '12' { $DoOpencode = $true }
                 default { Write-Host "Ignoring unknown selection: $P" -ForegroundColor Red }
             }
         }
     }
 
-    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall -or $DoTweaks)) {
+    if (-not ($DoProfile -or $DoNvim -or $DoWinTerm -or $DoAhk -or $DoMpv -or $DoPowerToys -or $DoInstalls -or $DoFonts -or $DoFfmpeg -or $DoPowerToysInstall -or $DoTweaks -or $DoOpencode)) {
         Write-Host "Nothing selected. Cancelled." -ForegroundColor Yellow
         return
     }
@@ -545,6 +549,65 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
 
     Write-Host "`n  Applied. Restart Explorer (or sign out) for the taskbar changes to show." -ForegroundColor Yellow
     Write-Host "  Restart Explorer now with: Stop-Process -Name explorer -Force" -ForegroundColor Cyan
+}
+
+# 12. Restore opencode config
+if ($DoOpencode) {
+    Write-Host "`n--- Restoring opencode Config ---" -ForegroundColor Yellow
+    # Files under $Root (relative), minus what opencode regenerates on startup
+    # (node_modules, lockfiles, its own .gitignore) and restore backups.
+    function Get-OpencodeFiles {
+        param([Parameter(Mandatory=$true)][string]$Root)
+        $Root = (Resolve-Path -LiteralPath $Root).Path.TrimEnd('\', '/')
+        Get-ChildItem -LiteralPath $Root -Recurse -File -Force | ForEach-Object {
+            $_.FullName.Substring($Root.Length + 1)
+        } | Where-Object {
+            $Parts = $_ -split '[\\/]'
+            -not ($Parts -contains 'node_modules') -and
+            $Parts[-1] -notin @('bun.lock', 'package-lock.json', '.gitignore') -and
+            $Parts[-1] -notlike '*.bak.*'
+        } | Sort-Object
+    }
+
+    # opencode uses the same layout as on Linux, so the repo copy is shared with
+    # linux/sync-config.sh and linux/restore-config.sh.
+    $XdgConfig = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE ".config" }
+    $SourceDir = Join-Path $ConfigRoot "opencode"
+    $TargetDir = Join-Path $XdgConfig "opencode"
+
+    Write-Host "Restoring opencode config from: $SourceDir" -ForegroundColor Cyan
+    Write-Host "Restoring to: $TargetDir" -ForegroundColor Cyan
+
+    if (!(Test-Path $SourceDir)) {
+        Write-Host "Warning: opencode config not found in repo" -ForegroundColor Red
+    } else {
+        # Files only present locally are left alone; restore never deletes.
+        foreach ($Rel in Get-OpencodeFiles $SourceDir) {
+            $Source = Join-Path $SourceDir $Rel
+            $Target = Join-Path $TargetDir $Rel
+            try {
+                if ((Test-Path -LiteralPath $Target) -and ((Get-FileHash -LiteralPath $Source).Hash -eq (Get-FileHash -LiteralPath $Target).Hash)) {
+                    Write-Host "  unchanged: $Rel" -ForegroundColor DarkGray
+                    continue
+                }
+                $TargetParent = Split-Path $Target -Parent
+                if (!(Test-Path $TargetParent)) { New-Item -ItemType Directory -Path $TargetParent -Force | Out-Null }
+                if (Test-Path -LiteralPath $Target) {
+                    $Backup = "$Target.bak.$(Get-Date -Format yyyyMMddHHmmss)"
+                    Copy-Item -LiteralPath $Target $Backup -Force
+                    Write-Host "  backed up: $Rel -> $(Split-Path $Backup -Leaf)" -ForegroundColor Yellow
+                }
+                Copy-Item -LiteralPath $Source $Target -Force
+                Write-Host "  restored: $Rel" -ForegroundColor Green
+            } catch {
+                Write-Host "  failed: $Rel - $($_.Exception.Message)" -ForegroundColor Red
+            }
+        }
+
+        if (!(Get-Command opencode -ErrorAction SilentlyContinue)) {
+            Write-Host "opencode is not installed. Install it with: npm install -g opencode-ai" -ForegroundColor Yellow
+        }
+    }
 }
 
 Write-Host "`n=== Configuration Restore Complete ===" -ForegroundColor Magenta

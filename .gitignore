@@ -1,1 +1,8 @@
 .claude
+
+# Backstop for opencode/ — sync already skips these, but this repo is public.
+opencode/**/node_modules/
+opencode/**/*.lock
+opencode/**/package-lock.json
+opencode/**/auth.json
+opencode/**/*.bak.*
