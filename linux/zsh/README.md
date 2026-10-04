@@ -59,11 +59,35 @@ These work in zsh, bash, the Python REPL, psql, and anything else using GNU read
 - `Alt+C` — fuzzy directory picker; `cd`s into the choice
 - Type partial letters; `Tab` multi-selects; `Enter` confirms; `Esc` cancels
 
+**fzf command pickers** — ports of the PowerShell profile's helpers, so the same two-letter commands work on both machines. Each fuzzy-picks under the current directory (via `fd`, falling back to `find`):
+
+| Command | Picks | Then |
+|---------|-------|------|
+| `fc` | any path | copies the absolute path to the clipboard |
+| `fn` | a file | opens it in nvim |
+| `fcd` | a directory | `cd`s into it |
+| `fe` | any path | reveals it in the desktop file manager |
+| `fgf` (= `gsf`) | a dirty file from `git status` | opens it in nvim |
+| `fh` | a past command | copies it to the clipboard (`Ctrl+R` runs it instead) |
+
+`fc` shadows zsh's history-editing builtin — the same trade the Windows profile makes. `builtin fc` still reaches the original if you want it.
+
 **zoxide** (`z`) — Tracks dirs you visit. After `cd ~/projects/foo` once, `z foo` jumps there from anywhere. `zi foo` opens an interactive picker.
 
 **Yazi** (`yazi` / `yy`) — Terminal file manager. Use `yy` when you want the shell to change to Yazi's directory after quitting.
 
 **starship** — Two-line prompt with git status, last command duration (only shown if >2s), current time. Cross-shell: same prompt works in pwsh, bash, fish.
+
+**alttab** — Turns GNOME's Alt+Tab window switcher off and on, for when a remote-desktop client (RustDesk) needs the keystroke to reach the *remote* machine instead of being swallowed by the local compositor.
+
+| command | effect |
+| --- | --- |
+| `alttab` | toggles |
+| `alttab off` | unbinds Alt+Tab locally so RustDesk gets it |
+| `alttab on` | restores the bindings saved by the last `off` |
+| `alttab status` | prints (and returns) the current state |
+
+Only the `<Alt>` bindings are stripped, so `Super+Tab` keeps switching windows on the local machine while Alt+Tab is off. Pre-`off` values are saved to `~/.local/state/alttab-bindings` and restored verbatim, so a customised binding survives the round trip. GNOME only — it drives `org.gnome.desktop.wm.keybindings` via `gsettings`.
 
 ## Useful zsh-specific tricks
 
