@@ -10,6 +10,29 @@ vim.g.format_on_save_enabled = false
 -- Use system clipboard as default register
 vim.opt.clipboard = "unnamedplus"
 
+-- Over SSH, yank to the local machine's clipboard with OSC 52 (the terminal
+-- does the copy). Copy only: Windows Terminal ignores OSC 52 read requests, so
+-- "+p pastes the last yank instead. Paste local text with the terminal's paste.
+if vim.env.SSH_TTY or vim.env.SSH_CONNECTION then
+	local osc52 = require("vim.ui.clipboard.osc52")
+	local last = { lines = {}, regtype = "v" }
+	local function copy(reg)
+		local send = osc52.copy(reg)
+		return function(lines, regtype)
+			last = { lines = lines, regtype = regtype }
+			send(lines, regtype)
+		end
+	end
+	local function paste()
+		return { last.lines, last.regtype }
+	end
+	vim.g.clipboard = {
+		name = "OSC 52 (copy only)",
+		copy = { ["+"] = copy("+"), ["*"] = copy("*") },
+		paste = { ["+"] = paste, ["*"] = paste },
+	}
+end
+
 local function set_terminal_folder_title()
 	local cwd = vim.fn.getcwd()
 	local title = vim.fn.fnamemodify(cwd, ":t")
