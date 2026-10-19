@@ -106,6 +106,18 @@ function Install-WingetPackageIfMissing {
     }
 }
 
+# AutoHotkey can be installed machine-wide or per-user (winget may pick either).
+$AhkRoots = @("$env:ProgramFiles\AutoHotkey", "$env:LOCALAPPDATA\Programs\AutoHotkey")
+
+# The AutoHotkey folder that has v2 in it, or $null
+function Get-AutoHotkeyRoot {
+    $AhkRoots | Where-Object { Test-Path "$_\v2\AutoHotkey64.exe" } | Select-Object -First 1
+}
+
+function Test-AutoHotkeyV1 {
+    [bool]($AhkRoots | Where-Object { (Test-Path "$_\AutoHotkeyU64.exe") -or (Test-Path "$_\v1*\AutoHotkeyU64.exe") })
+}
+
 # Decide which sections to run
 $AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Installs -or $Fonts -or $Ffmpeg -or $PowerToysInstall -or $Tweaks -or $Opencode
 if ($All) {
@@ -136,7 +148,7 @@ if ($All) {
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
-    Write-Host " 11) Windows tweaks (dark mode, animation effects off, taskbar End Task)"
+    Write-Host " 11) Windows tweaks (dark mode, animation effects off, taskbar End Task, clipboard history)"
     Write-Host " 12) opencode config (~\.config\opencode)"
     Write-Host "  A) All (excludes PowerToys install)"
     Write-Host "  Q) Quit"
@@ -289,9 +301,8 @@ if ($DoAhk) {
     Write-Host "Restoring AutoHotkey scripts from: $AhkSourceDir" -ForegroundColor Cyan
 
     # Scripts in ahk\ need both versions; -Installs puts in v2, then v1 alongside it.
-    $AhkRoot = "$env:ProgramFiles\AutoHotkey"
-    $AhkV1 = (Test-Path "$AhkRoot\AutoHotkeyU64.exe") -or (Test-Path "$AhkRoot\v1*\AutoHotkeyU64.exe")
-    $AhkV2 = Test-Path "$AhkRoot\v2\AutoHotkey64.exe"
+    $AhkV1 = Test-AutoHotkeyV1
+    $AhkV2 = [bool](Get-AutoHotkeyRoot)
 
     if (-not ($AhkV1 -and $AhkV2)) {
         $Missing = @(if (-not $AhkV1) { 'v1' }; if (-not $AhkV2) { 'v2' }) -join ' and '
@@ -429,11 +440,12 @@ if ($DoInstalls) {
     # winget's AutoHotkey.AutoHotkey can only hold one version, so use v2's own
     # version installer, which puts v1 in Program Files\AutoHotkey\v1.x.
     $AhkV1Version = '1.1.37.02'
-    $AhkRoot = "$env:ProgramFiles\AutoHotkey"
-    if ((Test-Path "$AhkRoot\AutoHotkeyU64.exe") -or (Test-Path "$AhkRoot\v1*\AutoHotkeyU64.exe")) {
+    # winget may install v2 machine-wide or per-user; v1 goes wherever v2 is.
+    $AhkRoot = Get-AutoHotkeyRoot
+    if (Test-AutoHotkeyV1) {
         Write-Host "AutoHotkey v1 is already installed." -ForegroundColor Green
-    } elseif (!(Test-Path "$AhkRoot\v2\AutoHotkey64.exe") -or !(Test-Path "$AhkRoot\UX\install-version.ahk")) {
-        Write-Host "AutoHotkey v1 needs AutoHotkey v2 installed first, which failed above. Skipping." -ForegroundColor Red
+    } elseif (-not $AhkRoot -or !(Test-Path "$AhkRoot\UX\install-version.ahk")) {
+        Write-Host "AutoHotkey v1 needs AutoHotkey v2, which isn't in Program Files or %LOCALAPPDATA%\Programs. Skipping." -ForegroundColor Red
     } else {
         Write-Host "Installing AutoHotkey v1 ($AhkV1Version) alongside v2..." -ForegroundColor Cyan
         Write-Host "  Approve the AutoHotkey admin prompt, then click OK on its 'is now installed' message." -ForegroundColor Yellow
@@ -525,7 +537,7 @@ if ($DoPowerToysInstall) {
     }
 }
 
-# 11. Windows tweaks: dark mode, animation effects off, taskbar "End Task"
+# 11. Windows tweaks: dark mode, animation effects off, taskbar "End Task", clipboard history
 if ($DoTweaks) {
     Write-Host "`n--- Applying Windows Tweaks ---" -ForegroundColor Yellow
 
@@ -604,6 +616,10 @@ public static extern System.IntPtr SendMessageTimeout(System.IntPtr hWnd, uint M
     # --- Taskbar right-click "End task" ---
     Write-Host "`n  Taskbar End Task:" -ForegroundColor Cyan
     Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings" -Name 'TaskbarEndTask' -Value 1 -Label 'End task enabled in taskbar right-click menu'
+
+    # --- Clipboard history (Win+V) ---
+    Write-Host "`n  Clipboard history:" -ForegroundColor Cyan
+    Set-RegistryValue -Path "HKCU:\SOFTWARE\Microsoft\Clipboard" -Name 'EnableClipboardHistory' -Value 1 -Label 'Clipboard history on (Win+V)'
 
     # Nudge running apps to pick up the new theme.
     if ('WinTweakNative' -as [type]) {

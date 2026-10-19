@@ -34,7 +34,8 @@ function Resolve-AutoHotkeyInstall {
     $v1Candidates = @()
     $v2Candidates = @()
 
-    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }) {
+    # Machine-wide installs, then per-user (where winget may put it)
+    foreach ($root in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, (Join-Path $env:LOCALAPPDATA "Programs")) | Where-Object { $_ }) {
         $installRoot = Join-Path $root "AutoHotkey"
         $launcherCandidates += Join-Path $installRoot "AutoHotkey.exe"
         $v2Candidates += Join-Path $installRoot "v2\AutoHotkey64.exe"

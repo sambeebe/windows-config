@@ -17,7 +17,7 @@
 # using v2's own version installer.
 name	check	version	winget	dnf	apt	linux
 PowerShell 7	pwsh	-	Microsoft.PowerShell	-	-	-
-AutoHotkey v2	%ProgramFiles%\AutoHotkey\v2\AutoHotkey64.exe	-	AutoHotkey.AutoHotkey	-	-	-
+AutoHotkey v2	%ProgramFiles%\AutoHotkey\v2\AutoHotkey64.exe,%LOCALAPPDATA%\Programs\AutoHotkey\v2\AutoHotkey64.exe	-	AutoHotkey.AutoHotkey	-	-	-
 Everything 1.5a	%ProgramFiles(x86)%\Everything 1.5a\Everything.exe,%ProgramFiles%\Everything 1.5a\Everything.exe	-	voidtools.Everything.Alpha	-	-	-
 zsh	zsh	-	-	zsh	zsh	-
 git	git	-	-	git	git	-
