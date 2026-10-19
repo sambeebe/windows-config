@@ -129,7 +129,7 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a)"
+    Write-Host "  7) Installs (PowerShell 7, AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
@@ -179,13 +179,8 @@ if ($All) {
 if ($DoProfile) {
     Write-Host "`n--- Restoring PowerShell Profile ---" -ForegroundColor Yellow
     $ProfileSource = Join-Path $ConfigRoot "pwsh\Microsoft.PowerShell_profile.ps1"
-    $ProfileTarget = if ($PROFILE -and $PROFILE.CurrentUserCurrentHost) {
-        $PROFILE.CurrentUserCurrentHost
-    } else {
-        $DocsDir = [Environment]::GetFolderPath('MyDocuments')
-        $PwshSubDir = if ($PSVersionTable.PSEdition -eq 'Core') { 'PowerShell' } else { 'WindowsPowerShell' }
-        Join-Path $DocsDir "$PwshSubDir\Microsoft.PowerShell_profile.ps1"
-    }
+    # Always target PowerShell 7's profile, even when this script runs under Windows PowerShell 5.1
+    $ProfileTarget = Join-Path ([Environment]::GetFolderPath('MyDocuments')) "PowerShell\Microsoft.PowerShell_profile.ps1"
     $ProfileTargetDir = Split-Path $ProfileTarget -Parent
 
     if (!(Test-Path $ProfileTargetDir)) {
@@ -388,6 +383,7 @@ if ($DoInstalls) {
     # Note: don't name this $Installs — PowerShell variable names are case-insensitive,
     # so it would collide with the [switch]$Installs parameter and fail to convert.
     $InstallList = @(
+        @{ CommandNames = @('pwsh.exe');                           PackageId = 'Microsoft.PowerShell';  DisplayName = 'PowerShell 7' },
         @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
         @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
         @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' },
