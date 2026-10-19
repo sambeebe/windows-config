@@ -21,6 +21,7 @@
 #   ./restore-config.sh --all
 #   ./restore-config.sh --zsh
 #   ./restore-config.sh --wezterm
+#   ./restore-config.sh --opencode
 #   ./restore-config.sh --zsh --no-install   # copy config only, skip installs
 
 set -uo pipefail
@@ -201,9 +202,48 @@ restore_wezterm() {
     check_wezterm
 }
 
+# ---- section: opencode ----------------------------------------------
+# opencode keeps the same layout on Windows (%USERPROFILE%\.config\opencode), so
+# the repo copy lives at the repo root and the Windows scripts share it.
+OPENCODE_LIVE="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
+OPENCODE_REPO="$(cd "$SCRIPT_DIR/.." && pwd)/opencode"
+
+# Files under <dir>, relative, minus what opencode regenerates on startup
+# (node_modules, lockfiles, its own .gitignore) and restore backups.
+opencode_files() {
+    (cd "$1" && find . \( -name node_modules -o -name bun.lock -o -name package-lock.json \
+        -o -name .gitignore -o -name '*.bak.*' \) -prune -o -type f -print | sed 's|^\./||' | sort)
+}
+
+restore_opencode() {
+    say "$C_YELLOW" $'\n--- Restoring opencode config ---'
+    if [[ ! -d "$OPENCODE_REPO" ]]; then
+        say "$C_RED" "  warning: not in repo: opencode/"
+        return
+    fi
+    # Files only present locally are left alone; restore never deletes.
+    local f
+    while IFS= read -r f; do
+        copy_out "$OPENCODE_REPO/$f" "$OPENCODE_LIVE/$f"
+    done < <(opencode_files "$OPENCODE_REPO")
+
+    if $NO_INSTALL; then
+        say "$C_CYAN" "  (--no-install: skipped dependency check)"
+        return
+    fi
+    say "$C_YELLOW" $'\n--- dependency check ---'
+    if command -v opencode >/dev/null 2>&1; then
+        say "$C_CYAN" "  present: opencode $(opencode --version 2>/dev/null | head -1)"
+    else
+        say "$C_RED" "  missing: opencode"
+        say "$C_YELLOW" "    curl -fsSL https://opencode.ai/install | bash"
+    fi
+}
+
 # ---- argument / menu handling --------------------------------------
 DO_ZSH=false
 DO_WEZTERM=false
+DO_OPENCODE=false
 DO_ALL=false
 ANY_FLAG=false
 NO_INSTALL=false
@@ -213,6 +253,7 @@ for arg in "$@"; do
         --all)  DO_ALL=true;  ANY_FLAG=true ;;
         --zsh)  DO_ZSH=true;  ANY_FLAG=true ;;
         --wezterm) DO_WEZTERM=true; ANY_FLAG=true ;;
+        --opencode) DO_OPENCODE=true; ANY_FLAG=true ;;
         # Modifier, not a section — on its own it still shows the menu.
         --no-install) NO_INSTALL=true ;;
         -h|--help)
@@ -229,10 +270,12 @@ say "$C_MAGENTA" "=== Linux Configuration Restore ==="
 if $DO_ALL; then
     DO_ZSH=true
     DO_WEZTERM=true
+    DO_OPENCODE=true
 elif ! $ANY_FLAG; then
     say "$C_YELLOW" $'\nSelect what to restore:'
     echo "  1) zsh setup (config, plugins, starship, dependency check)"
     echo "  2) wezterm setup (wezterm.lua, dependency check)"
+    echo "  3) opencode config (~/.config/opencode, dependency check)"
     echo "  A) All"
     echo "  Q) Quit"
     printf '%sEnter selection (e.g. '\''1'\'' or '\''A'\''): %s' "$C_CYAN" "$C_RESET"
@@ -241,19 +284,20 @@ elif ! $ANY_FLAG; then
 
     case "$choice" in
         Q|"") say "$C_YELLOW" "Cancelled."; exit 0 ;;
-        A)    DO_ZSH=true; DO_WEZTERM=true ;;
+        A)    DO_ZSH=true; DO_WEZTERM=true; DO_OPENCODE=true ;;
         *)
             IFS=',' read -ra parts <<< "$choice"
             for p in "${parts[@]}"; do
                 case "$p" in
                     1) DO_ZSH=true ;;
                     2) DO_WEZTERM=true ;;
+                    3) DO_OPENCODE=true ;;
                     *) say "$C_RED" "Ignoring unknown selection: $p" ;;
                 esac
             done ;;
     esac
 
-    if ! $DO_ZSH && ! $DO_WEZTERM; then
+    if ! $DO_ZSH && ! $DO_WEZTERM && ! $DO_OPENCODE; then
         say "$C_YELLOW" "Nothing selected. Cancelled."
         exit 0
     fi
@@ -261,6 +305,7 @@ fi
 
 $DO_ZSH && restore_zsh
 $DO_WEZTERM && restore_wezterm
+$DO_OPENCODE && restore_opencode
 
 say "$C_MAGENTA" $'\n=== Configuration Restore Complete ==='
 say "$C_CYAN" "Restored from: $CONFIG_ROOT"
