@@ -36,20 +36,34 @@ $ConfigRoot = $PSScriptRoot
 
 function Install-WingetPackageIfMissing {
     param(
-        [Parameter(Mandatory=$true)][string[]]$CommandNames,
+        [string[]]$CommandNames = @(),
+        # For apps that don't put an exe on PATH (e.g. Everything)
+        [string[]]$Paths = @(),
         [Parameter(Mandatory=$true)][string]$PackageId,
-        [Parameter(Mandatory=$true)][string]$DisplayName
+        [Parameter(Mandatory=$true)][string]$DisplayName,
+        # Exact version to install and pin; checked against `<command> --version`
+        [string]$Version
     )
 
-    $IsInstalled = $false
+    $Found = $null
     foreach ($CommandName in $CommandNames) {
-        if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
-            $IsInstalled = $true
-            break
+        $Found = Get-Command $CommandName -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($Found) { break }
+    }
+    if (-not $Found) {
+        foreach ($Path in $Paths) {
+            if (Test-Path $Path) { $Found = $Path; break }
         }
     }
 
-    if ($IsInstalled) {
+    if ($Found) {
+        if ($Version -and $Found -is [System.Management.Automation.CommandInfo]) {
+            $line = (& $Found.Source --version 2>$null | Select-Object -First 1)
+            if ($line -match '(\d+\.\d+\.\d+)' -and $Matches[1] -ne $Version) {
+                Write-Host "$DisplayName $($Matches[1]) is installed, but $Version is wanted. Uninstall it and re-run to get $Version." -ForegroundColor Yellow
+                return
+            }
+        }
         Write-Host "$DisplayName is already installed." -ForegroundColor Green
         return
     }
@@ -62,8 +76,13 @@ function Install-WingetPackageIfMissing {
 
     Write-Host "Installing $DisplayName..." -ForegroundColor Cyan
     try {
-        & $Winget.Source install --id $PackageId --exact --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host $_ }
+        $VersionArgs = if ($Version) { @('--version', $Version) } else { @() }
+        & $Winget.Source install --id $PackageId --exact @VersionArgs --accept-package-agreements --accept-source-agreements 2>&1 | ForEach-Object { Write-Host $_ }
         $code = $LASTEXITCODE
+        if ($Version -and $code -eq 0) {
+            # Pin so `winget upgrade --all` leaves the exact version alone
+            & $Winget.Source pin add --id $PackageId --exact --version $Version 2>&1 | ForEach-Object { Write-Host $_ }
+        }
 
         # winget exit codes that mean "nothing to do" — treat as success so the
         # restore loop keeps going on machines where the package is already current.
@@ -108,7 +127,7 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (AutoHotkey, tre-command, zoxide, fzf)"
+    Write-Host "  7) Installs (AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
@@ -366,13 +385,15 @@ if ($DoInstalls) {
     # so it would collide with the [switch]$Installs parameter and fail to convert.
     $InstallList = @(
         @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
-        @{ CommandNames = @('tre.exe');                            PackageId = 'duan.tre';              DisplayName = 'tre-command' },
         @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
-        @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' }
+        @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' },
+        @{ CommandNames = @('nvim.exe');                           PackageId = 'Neovim.Neovim';         DisplayName = 'Neovim'; Version = '0.11.0' },
+        @{ Paths = @("${env:ProgramFiles(x86)}\Everything 1.5a\Everything.exe", "$env:ProgramFiles\Everything 1.5a\Everything.exe")
+                                                                   PackageId = 'voidtools.Everything.Alpha'; DisplayName = 'Everything 1.5a' }
     )
     foreach ($pkg in $InstallList) {
         try {
-            Install-WingetPackageIfMissing -CommandNames $pkg.CommandNames -PackageId $pkg.PackageId -DisplayName $pkg.DisplayName -ErrorAction Continue
+            Install-WingetPackageIfMissing @pkg -ErrorAction Continue
         } catch {
             Write-Host "Skipping $($pkg.DisplayName): $($_.Exception.Message)" -ForegroundColor Red
         }
