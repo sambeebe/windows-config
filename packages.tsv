@@ -13,9 +13,11 @@
 #   linux    custom Linux installer in linux/restore-config.sh, used instead of dnf/apt
 #
 # PowerToys (option 10) and ffmpeg on Windows (option 9) have their own sections.
+# AutoHotkey v1 isn't a separate winget package: -Installs adds it next to v2
+# using v2's own version installer.
 name	check	version	winget	dnf	apt	linux
 PowerShell 7	pwsh	-	Microsoft.PowerShell	-	-	-
-AutoHotkey	AutoHotkey,AutoHotkey64	-	AutoHotkey.AutoHotkey	-	-	-
+AutoHotkey v2	%ProgramFiles%\AutoHotkey\v2\AutoHotkey64.exe	-	AutoHotkey.AutoHotkey	-	-	-
 Everything 1.5a	%ProgramFiles(x86)%\Everything 1.5a\Everything.exe,%ProgramFiles%\Everything 1.5a\Everything.exe	-	voidtools.Everything.Alpha	-	-	-
 zsh	zsh	-	-	zsh	zsh	-
 git	git	-	-	git	git	-

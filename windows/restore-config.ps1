@@ -288,11 +288,14 @@ if ($DoAhk) {
 
     Write-Host "Restoring AutoHotkey scripts from: $AhkSourceDir" -ForegroundColor Cyan
 
-    $AhkInstalled = $null -ne (Get-Command AutoHotkey.exe -ErrorAction SilentlyContinue) -or
-        $null -ne (Get-Command AutoHotkey64.exe -ErrorAction SilentlyContinue)
+    # Scripts in ahk\ need both versions; -Installs puts in v2, then v1 alongside it.
+    $AhkRoot = "$env:ProgramFiles\AutoHotkey"
+    $AhkV1 = (Test-Path "$AhkRoot\AutoHotkeyU64.exe") -or (Test-Path "$AhkRoot\v1*\AutoHotkeyU64.exe")
+    $AhkV2 = Test-Path "$AhkRoot\v2\AutoHotkey64.exe"
 
-    if (-not $AhkInstalled) {
-        Write-Host "AutoHotkey is not installed. Run restore-config.ps1 -Installs to install it." -ForegroundColor Yellow
+    if (-not ($AhkV1 -and $AhkV2)) {
+        $Missing = @(if (-not $AhkV1) { 'v1' }; if (-not $AhkV2) { 'v2' }) -join ' and '
+        Write-Host "AutoHotkey $Missing is not installed. Run restore-config.ps1 -Installs to install it." -ForegroundColor Yellow
     }
 
     if (Test-Path $AhkSourceDir) {
@@ -419,6 +422,30 @@ if ($DoInstalls) {
             Install-WingetPackageIfMissing @pkg -ErrorAction Continue
         } catch {
             Write-Host "Skipping $($pkg.DisplayName): $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+
+    # AutoHotkey v1, side by side with v2 (some scripts in ahk\ need each).
+    # winget's AutoHotkey.AutoHotkey can only hold one version, so use v2's own
+    # version installer, which puts v1 in Program Files\AutoHotkey\v1.x.
+    $AhkV1Version = '1.1.37.02'
+    $AhkRoot = "$env:ProgramFiles\AutoHotkey"
+    if ((Test-Path "$AhkRoot\AutoHotkeyU64.exe") -or (Test-Path "$AhkRoot\v1*\AutoHotkeyU64.exe")) {
+        Write-Host "AutoHotkey v1 is already installed." -ForegroundColor Green
+    } elseif (!(Test-Path "$AhkRoot\v2\AutoHotkey64.exe") -or !(Test-Path "$AhkRoot\UX\install-version.ahk")) {
+        Write-Host "AutoHotkey v1 needs AutoHotkey v2 installed first, which failed above. Skipping." -ForegroundColor Red
+    } else {
+        Write-Host "Installing AutoHotkey v1 ($AhkV1Version) alongside v2..." -ForegroundColor Cyan
+        Write-Host "  Approve the AutoHotkey admin prompt, then click OK on its 'is now installed' message." -ForegroundColor Yellow
+        try {
+            Start-Process "$AhkRoot\v2\AutoHotkey64.exe" -ArgumentList "`"$AhkRoot\UX\install-version.ahk`"", $AhkV1Version -Wait
+            if (Test-Path "$AhkRoot\v$AhkV1Version\AutoHotkeyU64.exe") {
+                Write-Host "AutoHotkey v1 installed: $AhkRoot\v$AhkV1Version" -ForegroundColor Green
+            } else {
+                Write-Host "AutoHotkey v1 was not installed (prompt declined?). Continuing." -ForegroundColor Red
+            }
+        } catch {
+            Write-Host "Error installing AutoHotkey v1: $($_.Exception.Message). Continuing." -ForegroundColor Red
         }
     }
 }
