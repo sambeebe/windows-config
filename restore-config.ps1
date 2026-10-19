@@ -129,7 +129,7 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (PowerShell 7, AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a)"
+    Write-Host "  7) Installs (PowerShell 7, AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a, Node.js/npm, opencode, Claude Code, AWS CLI)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
@@ -258,6 +258,18 @@ if ($DoWinTerm) {
                 Write-Host "Windows Terminal settings restored successfully!" -ForegroundColor Green
             } catch {
                 Write-Host "Error restoring Windows Terminal settings: $($_.Exception.Message)" -ForegroundColor Red
+            }
+
+            # Make Windows Terminal the default terminal app (Settings > System > For developers > Terminal),
+            # so pwsh/cmd launched from Explorer, Run, etc. open in it instead of the legacy console host
+            try {
+                $StartupKey = 'HKCU:\Console\%%Startup'
+                if (!(Test-Path $StartupKey)) { New-Item -Path $StartupKey -Force | Out-Null }
+                New-ItemProperty -Path $StartupKey -Name 'DelegationConsole'  -Value '{2EACA947-7F5F-4CFA-BA87-8F7FBEEFBE69}' -PropertyType String -Force | Out-Null
+                New-ItemProperty -Path $StartupKey -Name 'DelegationTerminal' -Value '{E12CFF52-A866-4C77-9A90-F570A7AA2C6B}' -PropertyType String -Force | Out-Null
+                Write-Host "Windows Terminal set as the default terminal app." -ForegroundColor Green
+            } catch {
+                Write-Host "Error setting Windows Terminal as default terminal app: $($_.Exception.Message)" -ForegroundColor Red
             }
         }
     } else {
@@ -388,6 +400,10 @@ if ($DoInstalls) {
         @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
         @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' },
         @{ CommandNames = @('nvim.exe');                           PackageId = 'Neovim.Neovim';         DisplayName = 'Neovim'; Version = '0.11.0' },
+        @{ CommandNames = @('node.exe','npm.cmd');                 PackageId = 'OpenJS.NodeJS.LTS';     DisplayName = 'Node.js LTS (npm)' },
+        @{ CommandNames = @('opencode.exe','opencode');            PackageId = 'SST.opencode';          DisplayName = 'opencode' },
+        @{ CommandNames = @('claude.exe','claude');                PackageId = 'Anthropic.ClaudeCode';  DisplayName = 'Claude Code' },
+        @{ CommandNames = @('aws.exe');                            PackageId = 'Amazon.AWSCLI';         DisplayName = 'AWS CLI' },
         @{ Paths = @("${env:ProgramFiles(x86)}\Everything 1.5a\Everything.exe", "$env:ProgramFiles\Everything 1.5a\Everything.exe")
                                                                    PackageId = 'voidtools.Everything.Alpha'; DisplayName = 'Everything 1.5a' }
     )
