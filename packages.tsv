@@ -1,0 +1,43 @@
+# Tools installed by windows/restore-config.ps1 (-Installs) and linux/restore-config.sh (--packages).
+# One row per tool, TAB-separated. "-" means "not on this platform" (empty cells
+# can't be used: bash collapses runs of tabs).
+#
+#   name     display name
+#   check    comma-separated commands; if any is on PATH the tool counts as installed.
+#            Entries containing "\" are Windows paths (%VAR% expanded), for apps
+#            that don't put an exe on PATH.
+#   version  exact version to install (and pin on Windows); "-" = latest
+#   winget   winget package id
+#   dnf      Fedora / RHEL package name(s), space-separated
+#   apt      Ubuntu / Debian package name(s), space-separated
+#   linux    custom Linux installer in linux/restore-config.sh, used instead of dnf/apt
+#
+# PowerToys (option 10) and ffmpeg on Windows (option 9) have their own sections.
+name	check	version	winget	dnf	apt	linux
+PowerShell 7	pwsh	-	Microsoft.PowerShell	-	-	-
+AutoHotkey	AutoHotkey,AutoHotkey64	-	AutoHotkey.AutoHotkey	-	-	-
+Everything 1.5a	%ProgramFiles(x86)%\Everything 1.5a\Everything.exe,%ProgramFiles%\Everything 1.5a\Everything.exe	-	voidtools.Everything.Alpha	-	-	-
+zsh	zsh	-	-	zsh	zsh	-
+git	git	-	-	git	git	-
+curl	curl	-	-	curl	curl	-
+unzip	unzip	-	-	unzip	unzip	-
+fontconfig	fc-cache	-	-	fontconfig	fontconfig	-
+fzf	fzf	-	junegunn.fzf	fzf	fzf	-
+zoxide	zoxide	-	ajeetdsouza.zoxide	zoxide	zoxide	-
+Neovim	nvim	0.11.0	Neovim.Neovim	-	-	nvim-release
+Node.js (npm)	node,npm	-	OpenJS.NodeJS.LTS	nodejs npm	nodejs npm	-
+opencode	opencode	-	SST.opencode	-	-	opencode-script
+Claude Code	claude	-	Anthropic.ClaudeCode	-	-	claude-script
+AWS CLI	aws	-	Amazon.AWSCLI	-	-	awscli-zip
+wezterm	wezterm	-	-	wezterm	-	-
+mpv	mpv	-	-	mpv	mpv	-
+ffmpeg	ffmpeg	-	-	ffmpeg-free	ffmpeg	-
+fd	fd,fdfind	-	-	fd-find	fd-find	-
+ripgrep	rg	-	-	ripgrep	ripgrep	-
+bat	bat,batcat	-	-	bat	bat	-
+eza	eza	-	-	eza	eza	-
+yazi	yazi	-	-	yazi	-	-
+wl-clipboard	wl-copy	-	-	wl-clipboard	wl-clipboard	-
+xclip	xclip	-	-	xclip	xclip	-
+xsel	xsel	-	-	xsel	xsel	-
+xdotool	xdotool	-	-	xdotool	xdotool	-

@@ -27,7 +27,10 @@ param(
 )
 
 Write-Host "=== Windows Configuration Sync ===" -ForegroundColor Magenta
+# Windows-only config lives next to this script; config shared with Linux
+# (nvim, mpv, opencode) lives at the repo root.
 $ConfigRoot = $PSScriptRoot
+$RepoRoot = Split-Path $PSScriptRoot -Parent
 
 # Decide which sections to run
 $AnySwitch = $All -or $Profile -or $Nvim -or $WinTerm -or $Ahk -or $Mpv -or $PowerToys -or $Opencode
@@ -116,7 +119,7 @@ if ($DoProfile) {
 if ($DoNvim) {
     Write-Host "`n--- Syncing Neovim Configuration ---" -ForegroundColor Yellow
     $SourceDir = "$env:LOCALAPPDATA\nvim"
-    $TargetDir = Join-Path $ConfigRoot "nvim"
+    $TargetDir = Join-Path $RepoRoot "nvim"
     if (!(Test-Path $TargetDir)) {
         New-Item -ItemType Directory -Path $TargetDir -Force | Out-Null
     }
@@ -214,7 +217,7 @@ if ($DoAhk) {
 if ($DoMpv) {
     Write-Host "`n--- Syncing mpv Config ---" -ForegroundColor Yellow
     $MpvSourceDir = "$env:APPDATA\mpv"
-    $MpvTargetDir = Join-Path $ConfigRoot "mpv"
+    $MpvTargetDir = Join-Path $RepoRoot "mpv"
 
     if (!(Test-Path $MpvTargetDir)) {
         New-Item -ItemType Directory -Path $MpvTargetDir -Force | Out-Null
@@ -310,7 +313,7 @@ if ($DoOpencode) {
     # linux/sync-config.sh and linux/restore-config.sh.
     $XdgConfig = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE ".config" }
     $SourceDir = Join-Path $XdgConfig "opencode"
-    $TargetDir = Join-Path $ConfigRoot "opencode"
+    $TargetDir = Join-Path $RepoRoot "opencode"
 
     Write-Host "Syncing opencode config from: $SourceDir" -ForegroundColor Cyan
     Write-Host "Syncing to: $TargetDir" -ForegroundColor Cyan
@@ -350,4 +353,4 @@ if ($DoOpencode) {
 }
 
 Write-Host "`n=== Configuration Sync Complete ===" -ForegroundColor Magenta
-Write-Host "Synced to: $ConfigRoot" -ForegroundColor Cyan
+Write-Host "Synced to: $RepoRoot" -ForegroundColor Cyan

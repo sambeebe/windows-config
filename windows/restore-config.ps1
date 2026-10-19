@@ -33,7 +33,10 @@ param(
 )
 
 Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
+# Windows-only config lives next to this script; config shared with Linux
+# (nvim, mpv, opencode, packages.tsv) lives at the repo root.
 $ConfigRoot = $PSScriptRoot
+$RepoRoot = Split-Path $PSScriptRoot -Parent
 
 function Install-WingetPackageIfMissing {
     param(
@@ -129,7 +132,7 @@ if ($All) {
     Write-Host "  4) AutoHotkey scripts"
     Write-Host "  5) mpv config"
     Write-Host "  6) PowerToys settings"
-    Write-Host "  7) Installs (PowerShell 7, AutoHotkey, zoxide, fzf, Neovim 0.11.0, Everything 1.5a, Node.js/npm, opencode, Claude Code, AWS CLI)"
+    Write-Host "  7) Installs (everything in packages.tsv with a winget id)"
     Write-Host "  8) Fonts (CaskaydiaMono Nerd Font)"
     Write-Host "  9) ffmpeg (>= 8.1, user PATH)"
     Write-Host " 10) PowerToys install/update (heavy; not included in 'All')"
@@ -206,7 +209,7 @@ if ($DoProfile) {
 # 2. Restore Neovim Configuration
 if ($DoNvim) {
     Write-Host "`n--- Restoring Neovim Configuration ---" -ForegroundColor Yellow
-    $SourceDir = Join-Path $ConfigRoot "nvim"
+    $SourceDir = Join-Path $RepoRoot "nvim"
     $TargetDir = "$env:LOCALAPPDATA\nvim"
 
     if (!(Test-Path $TargetDir)) {
@@ -316,7 +319,7 @@ if ($DoAhk) {
 # 5. Restore mpv config
 if ($DoMpv) {
     Write-Host "`n--- Restoring mpv Config ---" -ForegroundColor Yellow
-    $MpvSourceDir = Join-Path $ConfigRoot "mpv"
+    $MpvSourceDir = Join-Path $RepoRoot "mpv"
     $MpvTargetDir = "$env:APPDATA\mpv"
 
     if (!(Test-Path $MpvTargetDir)) {
@@ -392,21 +395,25 @@ if ($DoInstalls) {
     Write-Host "`n--- Installing Packages ---" -ForegroundColor Yellow
     # PowerToys is intentionally NOT in this bundle — its update is heavy.
     # Use option 10 / -PowerToysInstall to install or update it.
+    # The list is shared with linux/restore-config.sh; rows with no winget id are Linux-only.
     # Note: don't name this $Installs — PowerShell variable names are case-insensitive,
     # so it would collide with the [switch]$Installs parameter and fail to convert.
-    $InstallList = @(
-        @{ CommandNames = @('pwsh.exe');                           PackageId = 'Microsoft.PowerShell';  DisplayName = 'PowerShell 7' },
-        @{ CommandNames = @('AutoHotkey.exe','AutoHotkey64.exe'); PackageId = 'AutoHotkey.AutoHotkey'; DisplayName = 'AutoHotkey' },
-        @{ CommandNames = @('zoxide.exe');                         PackageId = 'ajeetdsouza.zoxide';    DisplayName = 'zoxide' },
-        @{ CommandNames = @('fzf.exe');                            PackageId = 'junegunn.fzf';          DisplayName = 'fzf' },
-        @{ CommandNames = @('nvim.exe');                           PackageId = 'Neovim.Neovim';         DisplayName = 'Neovim'; Version = '0.11.0' },
-        @{ CommandNames = @('node.exe','npm.cmd');                 PackageId = 'OpenJS.NodeJS.LTS';     DisplayName = 'Node.js LTS (npm)' },
-        @{ CommandNames = @('opencode.exe','opencode');            PackageId = 'SST.opencode';          DisplayName = 'opencode' },
-        @{ CommandNames = @('claude.exe','claude');                PackageId = 'Anthropic.ClaudeCode';  DisplayName = 'Claude Code' },
-        @{ CommandNames = @('aws.exe');                            PackageId = 'Amazon.AWSCLI';         DisplayName = 'AWS CLI' },
-        @{ Paths = @("${env:ProgramFiles(x86)}\Everything 1.5a\Everything.exe", "$env:ProgramFiles\Everything 1.5a\Everything.exe")
-                                                                   PackageId = 'voidtools.Everything.Alpha'; DisplayName = 'Everything 1.5a' }
-    )
+    $PackagesFile = Join-Path $RepoRoot "packages.tsv"
+    $InstallList = @(Get-Content $PackagesFile |
+        Where-Object { $_ -and -not $_.StartsWith('#') } |
+        ConvertFrom-Csv -Delimiter "`t" |
+        Where-Object { $_.winget -ne '-' } |
+        ForEach-Object {
+            $Checks = $_.check -split ','
+            $pkg = @{
+                DisplayName  = $_.name
+                PackageId    = $_.winget
+                CommandNames = @($Checks | Where-Object { $_ -notmatch '\\' })
+                Paths        = @($Checks | Where-Object { $_ -match '\\' } | ForEach-Object { [Environment]::ExpandEnvironmentVariables($_) })
+            }
+            if ($_.version -ne '-') { $pkg.Version = $_.version }
+            $pkg
+        })
     foreach ($pkg in $InstallList) {
         try {
             Install-WingetPackageIfMissing @pkg -ErrorAction Continue
@@ -605,7 +612,7 @@ if ($DoOpencode) {
     # opencode uses the same layout as on Linux, so the repo copy is shared with
     # linux/sync-config.sh and linux/restore-config.sh.
     $XdgConfig = if ($env:XDG_CONFIG_HOME) { $env:XDG_CONFIG_HOME } else { Join-Path $env:USERPROFILE ".config" }
-    $SourceDir = Join-Path $ConfigRoot "opencode"
+    $SourceDir = Join-Path $RepoRoot "opencode"
     $TargetDir = Join-Path $XdgConfig "opencode"
 
     Write-Host "Restoring opencode config from: $SourceDir" -ForegroundColor Cyan
@@ -644,4 +651,4 @@ if ($DoOpencode) {
 }
 
 Write-Host "`n=== Configuration Restore Complete ===" -ForegroundColor Magenta
-Write-Host "Restored from: $ConfigRoot" -ForegroundColor Cyan
+Write-Host "Restored from: $RepoRoot" -ForegroundColor Cyan

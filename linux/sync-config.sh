@@ -2,8 +2,9 @@
 #
 # Sync Linux configuration files
 #
-# Copies live config from the system into this repo (under linux/).
-# Mirror of the Windows sync-config.ps1, but for Linux dotfiles.
+# Copies live config from the system into this repo. Mirror of the Windows
+# windows/sync-config.ps1. Linux-only config goes under linux/; config shared
+# with Windows (nvim, mpv, opencode) goes to the repo root.
 #
 # By default shows an interactive menu to pick which sections to sync. Use --all
 # to sync everything non-interactively, or pass any combination of section flags
@@ -14,13 +15,17 @@
 #   ./sync-config.sh --all
 #   ./sync-config.sh --zsh
 #   ./sync-config.sh --wezterm
+#   ./sync-config.sh --nvim
+#   ./sync-config.sh --mpv
 #   ./sync-config.sh --opencode
 
 set -uo pipefail
 
-# Repo root for the Linux config = directory this script lives in.
+# Linux-only config = directory this script lives in; shared config = repo root.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_ROOT="$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+XDG_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}"
 
 # ---- colors ---------------------------------------------------------
 if [[ -t 1 ]]; then
@@ -38,10 +43,24 @@ copy_in() {
     if [[ -e "$src" ]]; then
         mkdir -p "$(dirname "$dst")"
         cp -f "$src" "$dst"
-        say "$C_GREEN" "  synced: ${src/#$HOME/\~} -> ${dst#$CONFIG_ROOT/}"
+        say "$C_GREEN" "  synced: ${src/#$HOME/\~} -> ${dst#$REPO_ROOT/}"
     else
         say "$C_RED" "  warning: not found: ${src/#$HOME/\~}"
     fi
+}
+
+# mirror_in <live_dir> <repo_dir> — replace repo_dir with the files under
+# live_dir, so files deleted locally disappear from the repo too.
+mirror_in() {
+    local src="$1" dst="$2" f
+    if [[ ! -d "$src" ]]; then
+        say "$C_RED" "  warning: not found: ${src/#$HOME/\~}/"
+        return
+    fi
+    rm -rf "$dst"
+    while IFS= read -r f; do
+        copy_in "$src/$f" "$dst/$f"
+    done < <(cd "$src" && find . -type f ! -name '*.bak.*' | sed 's|^\./||' | sort)
 }
 
 # ---- section: zsh ---------------------------------------------------
@@ -49,8 +68,8 @@ sync_zsh() {
     say "$C_YELLOW" $'\n--- Syncing zsh setup ---'
     local dst="$CONFIG_ROOT/zsh"
     copy_in "$HOME/.zshrc"                 "$dst/.zshrc"
-    copy_in "$HOME/.config/starship.toml"  "$dst/starship.toml"
-    copy_in "$HOME/.config/zsh/README.md"  "$dst/README.md"
+    copy_in "$XDG_CONFIG/starship.toml"    "$dst/starship.toml"
+    copy_in "$XDG_CONFIG/zsh/README.md"    "$dst/README.md"
     # Optional machine-specific overrides — only present on some machines.
     [[ -e "$HOME/.zshrc.local" ]] && copy_in "$HOME/.zshrc.local" "$dst/.zshrc.local"
 }
@@ -58,15 +77,27 @@ sync_zsh() {
 # ---- section: wezterm -----------------------------------------------
 sync_wezterm() {
     say "$C_YELLOW" $'\n--- Syncing wezterm setup ---'
-    local dst="$CONFIG_ROOT/wezterm"
-    copy_in "$HOME/.config/wezterm/wezterm.lua" "$dst/wezterm.lua"
+    copy_in "$XDG_CONFIG/wezterm/wezterm.lua" "$CONFIG_ROOT/wezterm/wezterm.lua"
 }
 
-# ---- section: opencode ----------------------------------------------
-# opencode keeps the same layout on Windows (%USERPROFILE%\.config\opencode), so
-# the repo copy lives at the repo root and the Windows scripts share it.
-OPENCODE_LIVE="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"
-OPENCODE_REPO="$(cd "$SCRIPT_DIR/.." && pwd)/opencode"
+# ---- section: nvim (shared with Windows) ----------------------------
+sync_nvim() {
+    say "$C_YELLOW" $'\n--- Syncing Neovim config ---'
+    copy_in   "$XDG_CONFIG/nvim/init.lua" "$REPO_ROOT/nvim/init.lua"
+    mirror_in "$XDG_CONFIG/nvim/lua"      "$REPO_ROOT/nvim/lua"
+}
+
+# ---- section: mpv (shared with Windows) -----------------------------
+sync_mpv() {
+    say "$C_YELLOW" $'\n--- Syncing mpv config ---'
+    copy_in   "$XDG_CONFIG/mpv/mpv.conf"   "$REPO_ROOT/mpv/mpv.conf"
+    copy_in   "$XDG_CONFIG/mpv/input.conf" "$REPO_ROOT/mpv/input.conf"
+    mirror_in "$XDG_CONFIG/mpv/scripts"    "$REPO_ROOT/mpv/scripts"
+}
+
+# ---- section: opencode (shared with Windows) ------------------------
+OPENCODE_LIVE="$XDG_CONFIG/opencode"
+OPENCODE_REPO="$REPO_ROOT/opencode"
 
 # Files under <dir>, relative, minus what opencode regenerates on startup
 # (node_modules, lockfiles, its own .gitignore) and restore backups.
@@ -110,18 +141,15 @@ sync_opencode() {
 }
 
 # ---- argument / menu handling --------------------------------------
-DO_ZSH=false
-DO_WEZTERM=false
-DO_OPENCODE=false
-DO_ALL=false
+SECTIONS=(zsh wezterm nvim mpv opencode)
+declare -A DO=()
 ANY_FLAG=false
 
 for arg in "$@"; do
     case "$arg" in
-        --all)  DO_ALL=true;  ANY_FLAG=true ;;
-        --zsh)  DO_ZSH=true;  ANY_FLAG=true ;;
-        --wezterm) DO_WEZTERM=true; ANY_FLAG=true ;;
-        --opencode) DO_OPENCODE=true; ANY_FLAG=true ;;
+        --all) for s in "${SECTIONS[@]}"; do DO[$s]=true; done; ANY_FLAG=true ;;
+        --zsh|--wezterm|--nvim|--mpv|--opencode)
+            DO[${arg#--}]=true; ANY_FLAG=true ;;
         -h|--help)
             grep -E '^#( |$)' "$0" | sed -E 's/^# ?//'
             exit 0 ;;
@@ -133,45 +161,42 @@ done
 
 say "$C_MAGENTA" "=== Linux Configuration Sync ==="
 
-if $DO_ALL; then
-    DO_ZSH=true
-    DO_WEZTERM=true
-    DO_OPENCODE=true
-elif ! $ANY_FLAG; then
+if ! $ANY_FLAG; then
     say "$C_YELLOW" $'\nSelect what to sync:'
     echo "  1) zsh setup (.zshrc, starship.toml, README)"
     echo "  2) wezterm setup (wezterm.lua)"
-    echo "  3) opencode config (~/.config/opencode)"
+    echo "  3) Neovim config (~/.config/nvim)"
+    echo "  4) mpv config (~/.config/mpv)"
+    echo "  5) opencode config (~/.config/opencode)"
     echo "  A) All"
     echo "  Q) Quit"
-    printf '%sEnter selection (e.g. '\''1'\'' or '\''A'\''): %s' "$C_CYAN" "$C_RESET"
+    printf '%sEnter selection (e.g. '\''1,3'\'' or '\''A'\''): %s' "$C_CYAN" "$C_RESET"
     read -r choice
     choice="$(echo "${choice:-}" | tr '[:lower:]' '[:upper:]' | tr -d '[:space:]')"
 
     case "$choice" in
         Q|"") say "$C_YELLOW" "Cancelled."; exit 0 ;;
-        A)    DO_ZSH=true; DO_WEZTERM=true; DO_OPENCODE=true ;;
+        A)    for s in "${SECTIONS[@]}"; do DO[$s]=true; done ;;
         *)
             IFS=',' read -ra parts <<< "$choice"
             for p in "${parts[@]}"; do
-                case "$p" in
-                    1) DO_ZSH=true ;;
-                    2) DO_WEZTERM=true ;;
-                    3) DO_OPENCODE=true ;;
-                    *) say "$C_RED" "Ignoring unknown selection: $p" ;;
-                esac
+                if [[ "$p" =~ ^[1-5]$ ]]; then
+                    DO[${SECTIONS[p-1]}]=true
+                else
+                    say "$C_RED" "Ignoring unknown selection: $p"
+                fi
             done ;;
     esac
 
-    if ! $DO_ZSH && ! $DO_WEZTERM && ! $DO_OPENCODE; then
+    if (( ${#DO[@]} == 0 )); then
         say "$C_YELLOW" "Nothing selected. Cancelled."
         exit 0
     fi
 fi
 
-$DO_ZSH && sync_zsh
-$DO_WEZTERM && sync_wezterm
-$DO_OPENCODE && sync_opencode
+for s in "${SECTIONS[@]}"; do
+    [[ -n "${DO[$s]:-}" ]] && "sync_$s"
+done
 
 say "$C_MAGENTA" $'\n=== Configuration Sync Complete ==='
-say "$C_CYAN" "Synced into: $CONFIG_ROOT"
+say "$C_CYAN" "Synced into: $REPO_ROOT"
