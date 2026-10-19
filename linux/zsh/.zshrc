@@ -345,6 +345,11 @@ fh() {
     _clip_text "$sel" && print 'Copied command to clipboard.'
 }
 
+# nvm: Node version manager (skipped if not installed)
+export NVM_DIR="$HOME/.nvm"
+[[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+[[ -s "$NVM_DIR/bash_completion" ]] && source "$NVM_DIR/bash_completion"
+
 # zoxide: smart cd. `z foo` jumps to a recently/frequently-used dir.
 command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init zsh)"
 
@@ -394,6 +399,8 @@ alias gs='git status'
 alias gd='git diff'
 alias gl='git log --oneline --graph --decorate -20'
 alias gsf=fgf                  # matches the PowerShell `gsf`
+# git add + commit + push in one go: `gap fix the thing` (matches the PowerShell `gap`)
+gap() { git add . && git commit -m "$*" && git push; }
 
 alias nvcon='nvim ~/.config/nvim/init.lua'
 alias nvzsh='nvim ~/.zshrc'
@@ -402,6 +409,7 @@ alias nvstar='nvim ~/.config/starship.toml'
 alias sz='source ~/.zshrc'
 
 alias yolo='claude --dangerously-skip-permissions'
+alias oc='opencode'
 alias kolo='opencode run --dangerously-skip-permissions'
 alias codexyolo='codex --dangerously-bypass-approvals-and-sandbox'
 

@@ -188,6 +188,8 @@ function zz { cd .. }
 function zzz { cd ..\..}
 function mkcd($in) { mkdir $in && cd $in }
 
+Set-Alias oc opencode
+
 Set-Alias nuke "C:\Program Files\Nuke15.2v5\Nuke15.2.exe"
 
 

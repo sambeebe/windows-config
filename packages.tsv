@@ -11,35 +11,36 @@
 #   dnf      Fedora / RHEL package name(s), space-separated
 #   apt      Ubuntu / Debian package name(s), space-separated
 #   linux    custom Linux installer in linux/restore-config.sh, used instead of dnf/apt
+#   gui      "gui" = desktop-only; skipped on Linux machines without a desktop (SSH-only)
 #
 # PowerToys (option 10) and ffmpeg on Windows (option 9) have their own sections.
 # AutoHotkey v1 isn't a separate winget package: -Installs adds it next to v2
 # using v2's own version installer.
-name	check	version	winget	dnf	apt	linux
-PowerShell 7	pwsh	-	Microsoft.PowerShell	-	-	-
-AutoHotkey v2	%ProgramFiles%\AutoHotkey\v2\AutoHotkey64.exe,%LOCALAPPDATA%\Programs\AutoHotkey\v2\AutoHotkey64.exe	-	AutoHotkey.AutoHotkey	-	-	-
-Everything 1.5a	%ProgramFiles(x86)%\Everything 1.5a\Everything.exe,%ProgramFiles%\Everything 1.5a\Everything.exe	-	voidtools.Everything.Alpha	-	-	-
-zsh	zsh	-	-	zsh	zsh	-
-git	git	-	-	git	git	-
-curl	curl	-	-	curl	curl	-
-unzip	unzip	-	-	unzip	unzip	-
-fontconfig	fc-cache	-	-	fontconfig	fontconfig	-
-fzf	fzf	-	junegunn.fzf	fzf	fzf	-
-zoxide	zoxide	-	ajeetdsouza.zoxide	zoxide	zoxide	-
-Neovim	nvim	0.11.0	Neovim.Neovim	-	-	nvim-release
-Node.js (npm)	node,npm	-	OpenJS.NodeJS.LTS	nodejs npm	nodejs npm	-
-opencode	opencode	-	SST.opencode	-	-	opencode-script
-Claude Code	claude	-	Anthropic.ClaudeCode	-	-	claude-script
-AWS CLI	aws	-	Amazon.AWSCLI	-	-	awscli-zip
-wezterm	wezterm	-	-	wezterm	-	-
-mpv	mpv	-	-	mpv	mpv	-
-ffmpeg	ffmpeg	-	-	ffmpeg-free	ffmpeg	-
-fd	fd,fdfind	-	-	fd-find	fd-find	-
-ripgrep	rg	-	-	ripgrep	ripgrep	-
-bat	bat,batcat	-	-	bat	bat	-
-eza	eza	-	-	eza	eza	-
-yazi	yazi	-	-	yazi	-	-
-wl-clipboard	wl-copy	-	-	wl-clipboard	wl-clipboard	-
-xclip	xclip	-	-	xclip	xclip	-
-xsel	xsel	-	-	xsel	xsel	-
-xdotool	xdotool	-	-	xdotool	xdotool	-
+name	check	version	winget	dnf	apt	linux	gui
+PowerShell 7	pwsh	-	Microsoft.PowerShell	-	-	-	-
+AutoHotkey v2	%ProgramFiles%\AutoHotkey\v2\AutoHotkey64.exe,%LOCALAPPDATA%\Programs\AutoHotkey\v2\AutoHotkey64.exe	-	AutoHotkey.AutoHotkey	-	-	-	-
+Everything 1.5a	%ProgramFiles(x86)%\Everything 1.5a\Everything.exe,%ProgramFiles%\Everything 1.5a\Everything.exe	-	voidtools.Everything.Alpha	-	-	-	-
+zsh	zsh	-	-	zsh	zsh	-	-
+git	git	-	-	git	git	-	-
+curl	curl	-	-	curl	curl	-	-
+unzip	unzip	-	-	unzip	unzip	-	-
+fontconfig	fc-cache	-	-	fontconfig	fontconfig	-	gui
+fzf	fzf	-	junegunn.fzf	fzf	fzf	-	-
+zoxide	zoxide	-	ajeetdsouza.zoxide	zoxide	zoxide	-	-
+Neovim	nvim	0.11.0	Neovim.Neovim	-	-	nvim-release	-
+Node.js (npm)	node,npm	-	OpenJS.NodeJS.LTS	nodejs npm	nodejs npm	-	-
+opencode	opencode	-	SST.opencode	-	-	opencode-script	-
+Claude Code	claude	-	Anthropic.ClaudeCode	-	-	claude-script	-
+AWS CLI	aws	-	Amazon.AWSCLI	-	-	awscli-zip	-
+wezterm	wezterm	-	-	wezterm	-	-	gui
+mpv	mpv	-	mpv-player.mpv-CI.MSVC	mpv	mpv	-	gui
+ffmpeg	ffmpeg	-	-	ffmpeg-free	ffmpeg	-	-
+fd	fd,fdfind	-	-	fd-find	fd-find	-	-
+ripgrep	rg	-	-	ripgrep	ripgrep	-	-
+bat	bat,batcat	-	-	bat	bat	-	-
+eza	eza	-	-	eza	eza	-	-
+yazi	yazi	-	-	yazi	-	-	-
+wl-clipboard	wl-copy	-	-	wl-clipboard	wl-clipboard	-	gui
+xclip	xclip	-	-	xclip	xclip	-	gui
+xsel	xsel	-	-	xsel	xsel	-	gui
+xdotool	xdotool	-	-	xdotool	xdotool	-	gui

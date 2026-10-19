@@ -38,6 +38,38 @@ Write-Host "=== Windows Configuration Restore ===" -ForegroundColor Magenta
 $ConfigRoot = $PSScriptRoot
 $RepoRoot = Split-Path $PSScriptRoot -Parent
 
+# winget "portable" packages (zoxide, fzf, ...) are meant to be reachable via a
+# symlink in WinGet\Links or a PATH entry, but neither always happens — and an
+# "already installed" result then leaves the command missing. Find the exe in the
+# package folder and put that folder on the user PATH (and this session's).
+function Add-WingetPackageToPath {
+    param(
+        [Parameter(Mandatory=$true)][string]$PackageId,
+        [Parameter(Mandatory=$true)][string[]]$CommandNames
+    )
+    $env:PATH = @([Environment]::GetEnvironmentVariable('PATH','Machine'), [Environment]::GetEnvironmentVariable('PATH','User'), $env:PATH) -join ';'
+    if ($CommandNames | Where-Object { Get-Command $_ -ErrorAction SilentlyContinue }) { return }
+
+    # Resolve the package folder first: -Recurse with a wildcard path filters instead of descending.
+    $PackageDirs = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Directory -Filter "$($PackageId)_*" -ErrorAction SilentlyContinue
+    $Exe = $PackageDirs | Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.BaseName -in ($CommandNames | ForEach-Object { [IO.Path]::GetFileNameWithoutExtension($_) }) -and $_.Extension -eq '.exe' } |
+        Select-Object -First 1
+    if (-not $Exe) {
+        Write-Host "  $PackageId reports installed, but its command isn't on PATH and its exe wasn't found." -ForegroundColor Red
+        return
+    }
+
+    $Dir = $Exe.DirectoryName
+    $UserPath = [Environment]::GetEnvironmentVariable('PATH', 'User')
+    $Parts = if ($UserPath) { $UserPath.Split(';') | Where-Object { $_ } } else { @() }
+    if (($Parts | ForEach-Object { $_.TrimEnd('\').ToLowerInvariant() }) -notcontains $Dir.TrimEnd('\').ToLowerInvariant()) {
+        [Environment]::SetEnvironmentVariable('PATH', (($Parts + $Dir) -join ';'), 'User')
+    }
+    $env:PATH = "$env:PATH;$Dir"
+    Write-Host "  Added to user PATH (open a new terminal): $Dir" -ForegroundColor Green
+}
+
 function Install-WingetPackageIfMissing {
     param(
         [string[]]$CommandNames = @(),
@@ -98,6 +130,7 @@ function Install-WingetPackageIfMissing {
         )
         if ($okCodes -contains $code) {
             Write-Host "$DisplayName is up to date." -ForegroundColor Green
+            if ($CommandNames) { Add-WingetPackageToPath -PackageId $PackageId -CommandNames $CommandNames }
         } else {
             Write-Host "Failed to install $DisplayName (exit code $code). Continuing." -ForegroundColor Red
         }

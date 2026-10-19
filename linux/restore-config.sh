@@ -30,6 +30,10 @@
 #   ./restore-config.sh --fonts
 #   ./restore-config.sh --opencode
 #   ./restore-config.sh --zsh --no-install   # copy config only, skip installs
+#   ./restore-config.sh --all --headless     # SSH-only box: skip desktop tools and fonts
+#
+# Machines without a desktop (systemd default target isn't graphical.target)
+# are detected as headless automatically; --gui / --headless override that.
 
 set -uo pipefail
 
@@ -226,13 +230,17 @@ restore_packages() {
         say "$C_RED" "  no dnf or apt found — only the per-user installers will run"
     fi
 
-    local name check version winget dnf apt linux pkg cmd found have_ver
-    local system_pkgs=() custom=() unavailable=()
-    while IFS=$'\t' read -r name check version winget dnf apt linux; do
+    local name check version winget dnf apt linux gui pkg cmd found have_ver
+    local system_pkgs=() custom=() unavailable=() desktop_only=()
+    while IFS=$'\t' read -r name check version winget dnf apt linux gui; do
         [[ -z "$name" || "$name" == \#* || "$name" == name ]] && continue
         [[ "$PKG_MGR" == dnf ]] && pkg="$dnf" || pkg="$apt"
         # Windows-only rows.
         [[ "$dnf" == - && "$apt" == - && "$linux" == - ]] && continue
+        if $HEADLESS && [[ "$gui" == gui ]]; then
+            desktop_only+=("$name")
+            continue
+        fi
 
         found=""
         IFS=',' read -ra cmds <<< "$check"
@@ -278,6 +286,26 @@ restore_packages() {
 
     if (( ${#unavailable[@]} )); then
         say "$C_YELLOW" "  no $PKG_MGR package listed, install by hand: ${unavailable[*]}"
+    fi
+    if (( ${#desktop_only[@]} )); then
+        say "$C_CYAN" "  headless: skipped desktop-only ${desktop_only[*]} (--gui to include)"
+    fi
+}
+
+# Headless = no desktop, e.g. a box you only reach over SSH. An SSH session into
+# a desktop machine still counts as a desktop, so this asks systemd for the boot
+# target rather than looking at $DISPLAY (which SSH sessions don't have).
+detect_headless() {
+    case "$GUI_MODE" in
+        gui)      HEADLESS=false; return ;;
+        headless) HEADLESS=true; return ;;
+    esac
+    local target=""
+    have systemctl && target="$(systemctl get-default 2>/dev/null)"
+    if [[ -n "$target" ]]; then
+        [[ "$target" == graphical.target ]] && HEADLESS=false || HEADLESS=true
+    else
+        [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && HEADLESS=false || HEADLESS=true
     fi
 }
 
@@ -446,6 +474,8 @@ SECTIONS=(packages zsh wezterm nvim mpv fonts opencode)
 declare -A DO=()
 ANY_FLAG=false
 NO_INSTALL=false
+GUI_MODE=auto      # auto | gui | headless
+HEADLESS=false
 
 for arg in "$@"; do
     case "$arg" in
@@ -455,6 +485,8 @@ for arg in "$@"; do
         # Modifier, not a section — on its own it still shows the menu.
         # Skips the sections whose job is installing software.
         --no-install) NO_INSTALL=true ;;
+        --gui)        GUI_MODE=gui ;;
+        --headless)   GUI_MODE=headless ;;
         -h|--help)
             grep -E '^#( |$)' "$0" | sed -E 's/^# ?//'
             exit 0 ;;
@@ -465,6 +497,8 @@ for arg in "$@"; do
 done
 
 say "$C_MAGENTA" "=== Linux Configuration Restore ==="
+detect_headless
+$HEADLESS && say "$C_CYAN" "Headless machine (no desktop): desktop-only tools and fonts will be skipped. Use --gui to include them."
 
 if ! $ANY_FLAG; then
     say "$C_YELLOW" $'\nSelect what to restore:'
@@ -505,6 +539,10 @@ if $NO_INSTALL; then
     [[ -n "${DO[packages]:-}" ]] && say "$C_CYAN" "(--no-install: skipped packages)"
     [[ -n "${DO[fonts]:-}" ]] && say "$C_CYAN" "(--no-install: skipped fonts)"
     unset 'DO[packages]' 'DO[fonts]'
+fi
+if $HEADLESS && [[ -n "${DO[fonts]:-}" ]]; then
+    say "$C_CYAN" "(headless: skipped fonts)"
+    unset 'DO[fonts]'
 fi
 
 # Packages first, so later sections find git, curl, etc.
