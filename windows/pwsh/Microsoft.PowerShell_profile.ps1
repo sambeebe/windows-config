@@ -668,6 +668,27 @@ function set-env {
     [Environment]::GetEnvironmentVariable($Name, "User")
 }
 
+# Every env var in this session, sorted. Values of secret-looking names
+# (keys, tokens, passwords) are masked unless -Reveal; -Filter matches names.
+function list-env {
+    param(
+        [Parameter(Position = 0)]
+        [string]$Filter,
+
+        [Alias("r")]
+        [switch]$Reveal
+    )
+
+    $secret = 'KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH'
+    Get-ChildItem Env: |
+        Where-Object { -not $Filter -or $_.Name -like "*$Filter*" } |
+        Sort-Object Name |
+        ForEach-Object {
+            $value = if (-not $Reveal -and $_.Name -match $secret) { '********' } else { $_.Value }
+            "$($_.Name)=$value"
+        }
+}
+
 function Get-RemoteCopyTarget {
     $user = $env:REMOTE_COPY_USER
     $sshHost = $env:REMOTE_COPY_HOST

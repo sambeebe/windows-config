@@ -20,6 +20,7 @@ Once you internalize this split, the emacs-style key bindings below feel natural
 | `~/.config/starship.toml` | Prompt config |
 | `~/.local/share/zsh/plugins/` | Cloned plugin repos |
 | `~/.zshrc.local` | Optional machine-specific overrides (auto-sourced if present) |
+| `~/.config/zsh/env.zsh` | Persistent env vars written by `set-env` (machine-local, not synced) |
 | `~/.zshrc.pre-revamp.YYYYMMDD` | Backup of your previous config |
 
 ## The line-editing keys (memorize these)
@@ -78,6 +79,16 @@ These work in zsh, bash, the Python REPL, psql, and anything else using GNU read
 
 **starship** — Two-line prompt with git status, last command duration (only shown if >2s), current time. Cross-shell: same prompt works in pwsh, bash, fish.
 
+**Env vars** — the PowerShell profile's `get-env` / `set-env`, plus `list-env` (on both shells):
+
+| command | effect |
+| --- | --- |
+| `set-env NAME value` | saves to `~/.config/zsh/env.zsh` and exports it in the current shell; `''` removes it |
+| `get-env NAME` | prints the saved value |
+| `list-env [-r] [text]` | every exported var, sorted; keys/tokens/passwords show as `********` unless `-r`; `text` filters names |
+
+**Hostname in the prompt** — `set-env SHOW_HOSTNAME 1` adds a yellow host pill to the left of the starship prompt (takes effect on the next prompt) and the machine name to the right of opencode's prompt bar (on its next start). `set-env SHOW_HOSTNAME ''` turns it off. Works the same in pwsh for opencode on Windows.
+
 **alttab** — Turns GNOME's Alt+Tab window switcher off and on, for when a remote-desktop client (RustDesk) needs the keystroke to reach the *remote* machine instead of being swallowed by the local compositor.
 
 | command | effect |
@@ -109,6 +120,7 @@ Only the `<Alt>` bindings are stripped, so `Super+Tab` keeps switching windows o
 | `Where-Object` / `Select-String` | `grep` / `rg` (ripgrep) |
 | `$PROFILE` | `~/.zshrc` (alias `nvzsh`) |
 | `. $PROFILE` | `source ~/.zshrc` (alias `sz`) |
+| `get-env` / `set-env` / `list-env` | same names |
 | PSReadLine prediction | zsh-autosuggestions |
 | `Set-PSReadLineKeyHandler` | `bindkey` |
 | `Push-Location` / `Pop-Location` | auto via `setopt AUTO_PUSHD`; `cd -` cycles |

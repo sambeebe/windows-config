@@ -18,6 +18,63 @@ export VISUAL=nvim
 export PAGER=less
 export LESS='-R --mouse --wheel-lines=3'
 
+# ---- Persistent env vars (get-env / set-env / list-env) -------------
+# Equivalent of the PowerShell profile's User-scope env vars. Values live
+# in a machine-local file (deliberately outside what sync-config.sh copies)
+# and are exported into every shell, so programs launched from it see them.
+#   set-env NAME value    persist + export now ('' removes it)
+#   get-env NAME          print the persisted value
+#   list-env [-r] [text]  every exported var, secret-looking values masked
+#                         unless -r; optional text filters names
+ZSH_ENV_FILE=${XDG_CONFIG_HOME:-$HOME/.config}/zsh/env.zsh
+[[ -r $ZSH_ENV_FILE ]] && source $ZSH_ENV_FILE
+
+_env_name_ok() {
+    [[ $1 == [A-Za-z_][A-Za-z0-9_]# ]] && return
+    print -u2 "invalid variable name: $1"
+    return 2
+}
+
+get-env() {
+    (( $# == 1 )) || { print -u2 "usage: get-env NAME"; return 2 }
+    _env_name_ok $1 || return
+    # Subshell: read only what the file sets, not the current session's value.
+    ( unset $1; [[ -r $ZSH_ENV_FILE ]] && source $ZSH_ENV_FILE; print -r -- ${(P)1-} )
+}
+
+set-env() {
+    (( $# == 2 )) || { print -u2 "usage: set-env NAME value"; return 2 }
+    _env_name_ok $1 || return
+    local name=$1 value=$2
+    local -a lines
+    [[ -r $ZSH_ENV_FILE ]] && lines=("${(@f)$(<$ZSH_ENV_FILE)}")
+    lines=(${lines:#export $name=*})
+    if [[ -n $value ]]; then
+        lines+=("export $name=${(qq)value}")
+        export $name=$value
+    else
+        unset $name
+    fi
+    mkdir -p ${ZSH_ENV_FILE:h}
+    print -rl -- $lines > $ZSH_ENV_FILE
+    chmod 600 $ZSH_ENV_FILE
+    get-env $name
+}
+
+list-env() {
+    local reveal=0 filter name
+    [[ $1 == (-r|--reveal) ]] && { reveal=1; shift }
+    filter=$1
+    for name in ${(ko)parameters[(R)*export*]}; do
+        [[ -n $filter && ${name:l} != *${filter:l}* ]] && continue
+        if (( ! reveal )) && [[ ${name:u} == *(KEY|TOKEN|SECRET|PASSWORD|PASSWD|CREDENTIAL|AUTH)* ]]; then
+            print -r -- "$name=********"
+        else
+            print -r -- "$name=${(P)name}"
+        fi
+    done
+}
+
 # ---- History --------------------------------------------------------
 HISTFILE=~/.zsh_history
 HISTSIZE=50000
@@ -368,6 +425,20 @@ yy() {
 
     return $yazi_status
 }
+
+# Hostname in the prompt when SHOW_HOSTNAME is truthy (set-env SHOW_HOSTNAME 1).
+# Checked before every prompt so toggling it takes effect immediately;
+# starship.toml shows $PROMPT_HOST via its env_var module. opencode reads
+# the same variable (opencode/tui-plugins/hostname.tsx).
+_prompt_host() {
+    if [[ ${SHOW_HOSTNAME:l} == (1|true|yes|on) ]]; then
+        export PROMPT_HOST=${HOST%%.*}
+    else
+        unset PROMPT_HOST
+    fi
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd _prompt_host
 
 # starship prompt
 command -v starship >/dev/null 2>&1 && eval "$(starship init zsh)"

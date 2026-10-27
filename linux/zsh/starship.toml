@@ -5,6 +5,7 @@ add_newline = true
 command_timeout = 1000
 
 format = """
+${env_var.PROMPT_HOST}\
 [](fg:#3a3a3a)\
 $directory\
 [](fg:#3a3a3a bg:#444444)\
@@ -14,6 +15,12 @@ $fill\
 $cmd_duration\
 $time
 $character"""
+
+# Hostname pill, shown only while PROMPT_HOST is set — .zshrc sets it from
+# SHOW_HOSTNAME before each prompt.
+[env_var.PROMPT_HOST]
+style = "bold fg:#1e1e1e bg:#ffd866"
+format = "[ $env_value ]($style) "
 
 [fill]
 symbol = " "
